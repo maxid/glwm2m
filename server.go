@@ -1,13 +1,15 @@
 // Package glwm2m implements a minimal LwM2M server registration state machine.
 //
-// Transport/wire format are provided by gcoap and gnety; DTLS and the full
-// object model (read/write/execute, observe) are roadmap.
+// Transport/wire format are provided by gcoap and gnety. Registration, TLV
+// read/write/execute, Observe and DTLS are implemented; object-model
+// completeness, Bootstrap, Queue Mode and OSCORE are roadmap.
 package glwm2m
 
 import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -260,8 +262,15 @@ func (s *Server) objectTLV(objectID uint16) ([]byte, bool) {
 	if len(instances) == 0 {
 		return nil, false
 	}
-	entries := make([]tlv.Entry, 0, len(instances))
-	for iid, resources := range instances {
+	ids := make([]uint16, 0, len(instances))
+	for iid := range instances {
+		ids = append(ids, iid)
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
+	entries := make([]tlv.Entry, 0, len(ids))
+	for _, iid := range ids {
+		resources := instances[iid]
+		sort.Slice(resources, func(i, j int) bool { return resources[i].ID < resources[j].ID })
 		entries = append(entries, tlv.Entry{Type: tlv.ObjectInstance, ID: iid, Children: resources})
 	}
 	payload, err := tlv.Marshal(entries)
@@ -282,6 +291,8 @@ func (s *Server) instanceTLV(objectID, instanceID uint16) ([]byte, bool) {
 	if len(entries) == 0 {
 		return nil, false
 	}
+	// Map iteration is unordered; sort so TLV output is deterministic.
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ID < entries[j].ID })
 	payload, err := tlv.Marshal(entries)
 	return payload, err == nil
 }

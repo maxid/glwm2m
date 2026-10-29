@@ -1,6 +1,6 @@
 module github.com/maxid/glwm2m
 
-go 1.24
+go 1.27
 
 require (
 	github.com/maxid/gcoap v0.0.0-20261029134013-827e0d51d62a
