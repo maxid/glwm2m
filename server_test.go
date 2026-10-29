@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/maxid/gnety/codec/coap"
+
+	"github.com/maxid/glwm2m/tlv"
 )
 
 func startServer(t *testing.T) *Server {
@@ -128,5 +130,59 @@ func TestResourceReadWrite(t *testing.T) {
 	})
 	if missing.Code != coap.CodeNotFound {
 		t.Fatalf("missing code = %v", missing.Code)
+	}
+}
+
+func TestTLVObjectReadWrite(t *testing.T) {
+	srv := startServer(t)
+	// PUT /objects/3303/0 with two resources.
+	entries := []tlv.Entry{
+		{Type: tlv.ResourceValue, ID: 5700, Value: []byte("21.5")},
+		{Type: tlv.ResourceValue, ID: 5701, Value: []byte("C")},
+	}
+	payload, err := tlv.Marshal(entries)
+	if err != nil {
+		t.Fatal(err)
+	}
+	put := exchange(t, srv, coap.Message{
+		Type: coap.Confirmable, Code: coap.CodePUT, MessageID: 21,
+		Options: options("objects", "3303", "0"), Payload: payload,
+	})
+	if put.Code != coap.CodeChanged {
+		t.Fatalf("put code = %v", put.Code)
+	}
+	get := exchange(t, srv, coap.Message{
+		Type: coap.Confirmable, Code: coap.CodeGET, MessageID: 22,
+		Options: options("objects", "3303", "0"),
+	})
+	if get.Code != coap.CodeContent {
+		t.Fatalf("get code = %v", get.Code)
+	}
+	got, err := tlv.Unmarshal(get.Payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ID != 5700 || string(got[0].Value) != "21.5" {
+		t.Fatalf("tlv resources = %+v", got)
+	}
+	// Object-level read wraps instances.
+	obj := exchange(t, srv, coap.Message{
+		Type: coap.Confirmable, Code: coap.CodeGET, MessageID: 23,
+		Options: options("objects", "3303"),
+	})
+	if obj.Code != coap.CodeContent {
+		t.Fatalf("object get code = %v", obj.Code)
+	}
+	objTLV, err := tlv.Unmarshal(obj.Payload)
+	if err != nil || len(objTLV) != 1 || objTLV[0].Type != tlv.ObjectInstance || objTLV[0].ID != 0 {
+		t.Fatalf("object tlv = %+v err=%v", objTLV, err)
+	}
+	// Execute returns 2.04.
+	exec := exchange(t, srv, coap.Message{
+		Type: coap.Confirmable, Code: coap.CodePOST, MessageID: 24,
+		Options: options("objects", "3303", "0", "5700"),
+	})
+	if exec.Code != coap.CodeChanged {
+		t.Fatalf("execute code = %v", exec.Code)
 	}
 }

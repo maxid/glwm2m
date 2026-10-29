@@ -15,6 +15,8 @@ import (
 
 	"github.com/maxid/gcoap"
 	"github.com/maxid/gnety/codec/coap"
+
+	"github.com/maxid/glwm2m/tlv"
 )
 
 // Registration is one LwM2M client registration.
@@ -54,6 +56,7 @@ func New(cfg Config) (*Server, error) {
 	cs.HandlePrefix(coap.CodeDELETE, "/rd", s.handleDelete)
 	cs.HandlePrefix(coap.CodeGET, "/objects", s.handleRead)
 	cs.HandlePrefix(coap.CodePUT, "/objects", s.handleWrite)
+	cs.HandlePrefix(coap.CodePOST, "/objects", s.handleExecute)
 	s.coap = cs
 	return s, nil
 }
@@ -174,46 +177,165 @@ func resourceKey(objectID, instanceID, resourceID uint16) string {
 	return strconv.Itoa(int(objectID)) + "/" + strconv.Itoa(int(instanceID)) + "/" + strconv.Itoa(int(resourceID))
 }
 
-func parseResourcePath(path string) (objectID, instanceID, resourceID uint16, ok bool) {
+func pathIDs(path string) ([]uint16, bool) {
 	segs := strings.Split(strings.Trim(path, "/"), "/")
-	if len(segs) != 4 || segs[0] != "objects" {
-		return 0, 0, 0, false
+	if len(segs) < 2 || segs[0] != "objects" {
+		return nil, false
 	}
-	vals := make([]int, 3)
-	for i := 1; i < 4; i++ {
-		n, err := strconv.Atoi(segs[i])
+	ids := make([]uint16, 0, len(segs)-1)
+	for _, seg := range segs[1:] {
+		n, err := strconv.Atoi(seg)
 		if err != nil || n < 0 || n > 65535 {
-			return 0, 0, 0, false
+			return nil, false
 		}
-		vals[i-1] = n
+		ids = append(ids, uint16(n))
 	}
-	return uint16(vals[0]), uint16(vals[1]), uint16(vals[2]), true
+	return ids, true
 }
 
 func (s *Server) handleRead(_ context.Context, req gcoap.Request) gcoap.Response {
-	oid, iid, rid, ok := parseResourcePath(req.Path)
+	ids, ok := pathIDs(req.Path)
 	if !ok {
 		return gcoap.Response{Code: coap.CodeBadRequest}
 	}
-	value, ok := s.Resource(oid, iid, rid)
-	if !ok {
+	switch len(ids) {
+	case 1:
+		return s.readObject(ids[0])
+	case 2:
+		return s.readInstance(ids[0], ids[1])
+	case 3:
+		value, ok := s.Resource(ids[0], ids[1], ids[2])
+		if !ok {
+			return gcoap.Response{Code: coap.CodeNotFound}
+		}
+		return gcoap.Response{
+			Code:    coap.CodeContent,
+			Options: []coap.Option{{Number: coap.OptionContentFormat, Value: []byte{0}}},
+			Payload: value,
+		}
+	default:
+		return gcoap.Response{Code: coap.CodeBadRequest}
+	}
+}
+
+func (s *Server) readObject(objectID uint16) gcoap.Response {
+	s.objMu.RLock()
+	defer s.objMu.RUnlock()
+	instances := make(map[uint16][]tlv.Entry)
+	for key, value := range s.objects {
+		oid, iid, rid, ok := splitResourceKey(key)
+		if !ok || oid != objectID {
+			continue
+		}
+		instances[iid] = append(instances[iid], tlv.Entry{Type: tlv.ResourceValue, ID: rid, Value: append([]byte(nil), value...)})
+	}
+	if len(instances) == 0 {
 		return gcoap.Response{Code: coap.CodeNotFound}
+	}
+	entries := make([]tlv.Entry, 0, len(instances))
+	for iid, resources := range instances {
+		entries = append(entries, tlv.Entry{Type: tlv.ObjectInstance, ID: iid, Children: resources})
+	}
+	payload, err := tlv.Marshal(entries)
+	if err != nil {
+		return gcoap.Response{Code: coap.CodeInternalServerError}
 	}
 	return gcoap.Response{
 		Code:    coap.CodeContent,
-		Options: []coap.Option{{Number: coap.OptionContentFormat, Value: []byte{0}}}, // text/plain
-		Payload: value,
+		Options: []coap.Option{{Number: coap.OptionContentFormat, Value: contentFormatTLV}},
+		Payload: payload,
+	}
+}
+
+func (s *Server) readInstance(objectID, instanceID uint16) gcoap.Response {
+	s.objMu.RLock()
+	defer s.objMu.RUnlock()
+	var entries []tlv.Entry
+	for key, value := range s.objects {
+		oid, iid, rid, ok := splitResourceKey(key)
+		if !ok || oid != objectID || iid != instanceID {
+			continue
+		}
+		entries = append(entries, tlv.Entry{Type: tlv.ResourceValue, ID: rid, Value: append([]byte(nil), value...)})
+	}
+	if len(entries) == 0 {
+		return gcoap.Response{Code: coap.CodeNotFound}
+	}
+	payload, err := tlv.Marshal(entries)
+	if err != nil {
+		return gcoap.Response{Code: coap.CodeInternalServerError}
+	}
+	return gcoap.Response{
+		Code:    coap.CodeContent,
+		Options: []coap.Option{{Number: coap.OptionContentFormat, Value: contentFormatTLV}},
+		Payload: payload,
 	}
 }
 
 func (s *Server) handleWrite(_ context.Context, req gcoap.Request) gcoap.Response {
-	oid, iid, rid, ok := parseResourcePath(req.Path)
+	ids, ok := pathIDs(req.Path)
 	if !ok {
 		return gcoap.Response{Code: coap.CodeBadRequest}
 	}
-	s.SetResource(oid, iid, rid, req.Payload)
+	switch len(ids) {
+	case 2:
+		entries, err := tlv.Unmarshal(req.Payload)
+		if err != nil {
+			return gcoap.Response{Code: coap.CodeBadRequest}
+		}
+		s.applyTLV(ids[0], ids[1], entries)
+		return gcoap.Response{Code: coap.CodeChanged}
+	case 3:
+		s.SetResource(ids[0], ids[1], ids[2], req.Payload)
+		return gcoap.Response{Code: coap.CodeChanged}
+	default:
+		return gcoap.Response{Code: coap.CodeBadRequest}
+	}
+}
+
+func (s *Server) applyTLV(objectID, instanceID uint16, entries []tlv.Entry) {
+	for _, e := range entries {
+		switch e.Type {
+		case tlv.ObjectInstance:
+			s.applyTLV(objectID, e.ID, e.Children)
+		case tlv.ResourceValue:
+			s.SetResource(objectID, instanceID, e.ID, e.Value)
+		case tlv.MultipleResource:
+			for _, child := range e.Children {
+				s.SetResource(objectID, instanceID, e.ID, child.Value)
+			}
+		}
+	}
+}
+
+func (s *Server) handleExecute(_ context.Context, req gcoap.Request) gcoap.Response {
+	ids, ok := pathIDs(req.Path)
+	if !ok || len(ids) != 3 {
+		return gcoap.Response{Code: coap.CodeBadRequest}
+	}
+	if _, ok := s.Resource(ids[0], ids[1], ids[2]); !ok {
+		return gcoap.Response{Code: coap.CodeNotFound}
+	}
 	return gcoap.Response{Code: coap.CodeChanged}
 }
+
+func splitResourceKey(key string) (objectID, instanceID, resourceID uint16, ok bool) {
+	parts := strings.Split(key, "/")
+	if len(parts) != 3 {
+		return 0, 0, 0, false
+	}
+	vals := make([]int, 3)
+	for i, p := range parts {
+		n, err := strconv.Atoi(p)
+		if err != nil || n < 0 || n > 65535 {
+			return 0, 0, 0, false
+		}
+		vals[i] = n
+	}
+	return uint16(vals[0]), uint16(vals[1]), uint16(vals[2]), true
+}
+
+var contentFormatTLV = []byte{0x2D, 0x16} // application/vnd.oma.lwm2m+tlv (11542)
 
 func registrationID(path string) string {
 	id := strings.TrimPrefix(path, "/rd/")
