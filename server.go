@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/maxid/gcoap"
+	"github.com/maxid/gnety"
 	"github.com/maxid/gnety/codec/coap"
 
 	"github.com/maxid/glwm2m/tlv"
@@ -31,7 +32,9 @@ type Registration struct {
 
 // Config configures the LwM2M server.
 type Config struct {
-	Addr string
+	Addr    string
+	Network string // "udp" (default) or "dtls"
+	TLS     gnety.TLSConfig
 }
 
 // Server is a minimal LwM2M registration server.
@@ -47,7 +50,7 @@ type Server struct {
 // New creates a server and registers the /rd endpoints.
 func New(cfg Config) (*Server, error) {
 	s := &Server{regs: make(map[string]*Registration), objects: make(map[string][]byte)}
-	cs, err := gcoap.New(gcoap.Config{Addr: cfg.Addr})
+	cs, err := gcoap.New(gcoap.Config{Addr: cfg.Addr, Network: cfg.Network, TLS: cfg.TLS})
 	if err != nil {
 		return nil, err
 	}

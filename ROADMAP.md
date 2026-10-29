@@ -5,6 +5,6 @@
 - [x] Observe/Notify
 - [x] Read/Write (text/plain single resource)
 - [x] TLV multi-resource read/write and Execute
-- [ ] DTLS
+- [x] DTLS transport
 - [ ] Interop tests with simulators/devices
 - [ ] v1.0 API stabilization

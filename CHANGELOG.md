@@ -9,3 +9,4 @@
 - Single-resource read/write (text/plain) via `/objects/{oid}/{iid}/{rid}`.
 - LwM2M TLV codec and object/instance read/write; execute endpoint.
 - Observe/Notify: resource/instance/object changes notify registered observers.
+- DTLS transport configuration and registration-over-DTLS test.
