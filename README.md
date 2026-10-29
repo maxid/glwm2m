@@ -1,8 +1,8 @@
 # glwm2m
 
-A LwM2M server engine in Go (registration, observe, read/write/execute, DTLS), intended as a clean-room alternative to Leshan for Go services.
+A LwM2M server engine in Go: registration, observe, read/write/execute and DTLS.
 
-> Status: **experimental scaffold** (v0.0.0-dev). This is a **clean-room** implementation based on the OMA LwM2M specification; no EPL-licensed source code is copied.
+> Status: **experimental scaffold** (v0.0.0-dev).
 
 ## Planned features
 
