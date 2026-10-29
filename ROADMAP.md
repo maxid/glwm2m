@@ -1,7 +1,7 @@
 # Roadmap
 
-- [ ] CoAP transport integration
-- [ ] Registration state machine
+- [x] CoAP transport integration (gcoap/gnety)
+- [x] Registration / update / deregistration state machine
 - [ ] Observe/Notify
 - [ ] Read/Write/Execute
 - [ ] DTLS

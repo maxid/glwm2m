@@ -1,7 +1,8 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+> Development snapshots are untagged; entries below are chronological.
 
 ## [Unreleased]
 
-- Initial scaffold.
+- Minimal LwM2M registration state machine on gcoap: register, update,
+  deregister, in-memory registry.
