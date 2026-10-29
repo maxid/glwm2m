@@ -163,6 +163,7 @@ func (s *Server) SetResource(objectID, instanceID, resourceID uint16, value []by
 	s.objMu.Lock()
 	s.objects[resourceKey(objectID, instanceID, resourceID)] = append([]byte(nil), value...)
 	s.objMu.Unlock()
+	s.notifyChanged(objectID, instanceID, resourceID)
 }
 
 // Resource returns a resource value.
@@ -219,6 +220,30 @@ func (s *Server) handleRead(_ context.Context, req gcoap.Request) gcoap.Response
 }
 
 func (s *Server) readObject(objectID uint16) gcoap.Response {
+	payload, ok := s.objectTLV(objectID)
+	if !ok {
+		return gcoap.Response{Code: coap.CodeNotFound}
+	}
+	return gcoap.Response{
+		Code:    coap.CodeContent,
+		Options: []coap.Option{{Number: coap.OptionContentFormat, Value: contentFormatTLV}},
+		Payload: payload,
+	}
+}
+
+func (s *Server) readInstance(objectID, instanceID uint16) gcoap.Response {
+	payload, ok := s.instanceTLV(objectID, instanceID)
+	if !ok {
+		return gcoap.Response{Code: coap.CodeNotFound}
+	}
+	return gcoap.Response{
+		Code:    coap.CodeContent,
+		Options: []coap.Option{{Number: coap.OptionContentFormat, Value: contentFormatTLV}},
+		Payload: payload,
+	}
+}
+
+func (s *Server) objectTLV(objectID uint16) ([]byte, bool) {
 	s.objMu.RLock()
 	defer s.objMu.RUnlock()
 	instances := make(map[uint16][]tlv.Entry)
@@ -230,24 +255,17 @@ func (s *Server) readObject(objectID uint16) gcoap.Response {
 		instances[iid] = append(instances[iid], tlv.Entry{Type: tlv.ResourceValue, ID: rid, Value: append([]byte(nil), value...)})
 	}
 	if len(instances) == 0 {
-		return gcoap.Response{Code: coap.CodeNotFound}
+		return nil, false
 	}
 	entries := make([]tlv.Entry, 0, len(instances))
 	for iid, resources := range instances {
 		entries = append(entries, tlv.Entry{Type: tlv.ObjectInstance, ID: iid, Children: resources})
 	}
 	payload, err := tlv.Marshal(entries)
-	if err != nil {
-		return gcoap.Response{Code: coap.CodeInternalServerError}
-	}
-	return gcoap.Response{
-		Code:    coap.CodeContent,
-		Options: []coap.Option{{Number: coap.OptionContentFormat, Value: contentFormatTLV}},
-		Payload: payload,
-	}
+	return payload, err == nil
 }
 
-func (s *Server) readInstance(objectID, instanceID uint16) gcoap.Response {
+func (s *Server) instanceTLV(objectID, instanceID uint16) ([]byte, bool) {
 	s.objMu.RLock()
 	defer s.objMu.RUnlock()
 	var entries []tlv.Entry
@@ -259,16 +277,48 @@ func (s *Server) readInstance(objectID, instanceID uint16) gcoap.Response {
 		entries = append(entries, tlv.Entry{Type: tlv.ResourceValue, ID: rid, Value: append([]byte(nil), value...)})
 	}
 	if len(entries) == 0 {
-		return gcoap.Response{Code: coap.CodeNotFound}
+		return nil, false
 	}
 	payload, err := tlv.Marshal(entries)
-	if err != nil {
-		return gcoap.Response{Code: coap.CodeInternalServerError}
+	return payload, err == nil
+}
+
+func resourcePath(oid, iid, rid uint16) string {
+	return "/objects/" + strconv.Itoa(int(oid)) + "/" + strconv.Itoa(int(iid)) + "/" + strconv.Itoa(int(rid))
+}
+
+func instancePath(oid, iid uint16) string {
+	return "/objects/" + strconv.Itoa(int(oid)) + "/" + strconv.Itoa(int(iid))
+}
+
+func objectPath(oid uint16) string {
+	return "/objects/" + strconv.Itoa(int(oid))
+}
+
+func (s *Server) notifyChanged(objectID, instanceID, resourceID uint16) {
+	if s.coap == nil {
+		return
 	}
-	return gcoap.Response{
-		Code:    coap.CodeContent,
-		Options: []coap.Option{{Number: coap.OptionContentFormat, Value: contentFormatTLV}},
-		Payload: payload,
+	if value, ok := s.Resource(objectID, instanceID, resourceID); ok {
+		s.coap.Notify(resourcePath(objectID, instanceID, resourceID), gcoap.Response{
+			Code:    coap.CodeContent,
+			Options: []coap.Option{{Number: coap.OptionContentFormat, Value: []byte{0}}},
+			Payload: value,
+		})
+	}
+	if payload, ok := s.instanceTLV(objectID, instanceID); ok {
+		s.coap.Notify(instancePath(objectID, instanceID), gcoap.Response{
+			Code:    coap.CodeContent,
+			Options: []coap.Option{{Number: coap.OptionContentFormat, Value: contentFormatTLV}},
+			Payload: payload,
+		})
+	}
+	if payload, ok := s.objectTLV(objectID); ok {
+		s.coap.Notify(objectPath(objectID), gcoap.Response{
+			Code:    coap.CodeContent,
+			Options: []coap.Option{{Number: coap.OptionContentFormat, Value: contentFormatTLV}},
+			Payload: payload,
+		})
 	}
 }
 

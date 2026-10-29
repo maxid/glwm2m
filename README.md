@@ -17,10 +17,10 @@ A LwM2M server engine in Go.
 - Single-resource read/write (text/plain): `GET/PUT /objects/{oid}/{iid}/{rid}`
 - Object/instance read/write in LwM2M TLV: `GET/PUT /objects/{oid}` and `/objects/{oid}/{iid}`
 - Execute: `POST /objects/{oid}/{iid}/{rid}` → `2.04 Changed`
+- Observe/Notify: GET + Observe=0; resource/instance/object writes trigger notifications
 
 ## Planned
 
-- Observe / Notify
 - DTLS (X.509 / RPK)
 - Object 19 and binary code stream support
 - Bootstrap / Queue Mode / OSCORE

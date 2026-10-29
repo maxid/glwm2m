@@ -1,6 +1,6 @@
 github.com/coder/websocket v1.8.15 h1:6B2JPeOGlpff2Uz6vOEH1Vzpi0iUz20A+lPVhPHtNUA=
 github.com/coder/websocket v1.8.15/go.mod h1:NX3SzP+inril6yawo5CQXx8+fk145lPDC6pumgx0mVg=
-github.com/maxid/gcoap v0.0.0-20261029112224-c7c68bc2c259 h1:/NclvG9TiYAlezpThBvZ94LdvAyZ4AZnk551N+kyjgs=
-github.com/maxid/gcoap v0.0.0-20261029112224-c7c68bc2c259/go.mod h1:nZBRCux7CM5boH+DFHeFHFMf5e56v6Ml35e8lspEx5A=
+github.com/maxid/gcoap v0.0.0-20261029112934-38707d823dce h1:DwSsiIg+1wQyLzk3UXIadd8G56lSmjka3nC2ZtWwRDM=
+github.com/maxid/gcoap v0.0.0-20261029112934-38707d823dce/go.mod h1:nZBRCux7CM5boH+DFHeFHFMf5e56v6Ml35e8lspEx5A=
 github.com/maxid/gnety v0.0.0-20261029110038-9a3f07ada7e7 h1:LMvVUrFu/EH7jSFjR8RzLoDWDhHhQhLLsN89USzpyEM=
 github.com/maxid/gnety v0.0.0-20261029110038-9a3f07ada7e7/go.mod h1:ekaTAE4d+539+nmrpSLVUOTQw68YR9qNo+q0POD/jbY=

@@ -186,3 +186,63 @@ func TestTLVObjectReadWrite(t *testing.T) {
 		t.Fatalf("execute code = %v", exec.Code)
 	}
 }
+
+func TestObserveResourceChange(t *testing.T) {
+	srv := startServer(t)
+	srv.SetResource(3303, 0, 5700, []byte("21.5"))
+	addr, _ := net.ResolveUDPAddr("udp", srv.Addr())
+	conn, err := net.DialUDP("udp", nil, addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
+	obs := coap.Message{
+		Type: coap.Confirmable, Code: coap.CodeGET, MessageID: 31,
+		Token: []byte{7, 8},
+		Options: append(options("objects", "3303", "0", "5700"),
+			coap.Option{Number: coap.OptionObserve, Value: nil}),
+	}
+	raw, _ := obs.Marshal()
+	if _, err := conn.Write(raw); err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 1500)
+	n, err := conn.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial, err := coap.Parse(buf[:n])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := observeOption(initial); !ok {
+		t.Fatal("initial observe response missing Observe option")
+	}
+	srv.SetResource(3303, 0, 5700, []byte("22.0"))
+	n, err = conn.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notif, err := coap.Parse(buf[:n])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if notif.Type != coap.NonConfirmable || string(notif.Payload) != "22.0" {
+		t.Fatalf("notification = %v %q", notif.Type, notif.Payload)
+	}
+}
+
+func observeOption(m coap.Message) (uint32, bool) {
+	for _, opt := range m.Options {
+		if opt.Number != coap.OptionObserve {
+			continue
+		}
+		var v uint32
+		for _, b := range opt.Value {
+			v = v<<8 | uint32(b)
+		}
+		return v, true
+	}
+	return 0, false
+}

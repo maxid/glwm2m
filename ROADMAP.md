@@ -2,7 +2,7 @@
 
 - [x] CoAP transport integration (gcoap/gnety)
 - [x] Registration / update / deregistration state machine
-- [ ] Observe/Notify
+- [x] Observe/Notify
 - [x] Read/Write (text/plain single resource)
 - [x] TLV multi-resource read/write and Execute
 - [ ] DTLS
