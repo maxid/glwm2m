@@ -14,11 +14,12 @@ A LwM2M server engine in Go.
 - Update: `POST /rd/{id}` → `2.04 Changed`
 - Deregistration: `DELETE /rd/{id}` → `2.02 Deleted`
 - In-memory registration registry with endpoint/lifetime/binding/version
+- Single-resource read/write (text/plain): `GET/PUT /objects/{oid}/{iid}/{rid}`
 
 ## Planned
 
 - Observe / Notify
-- Read / Write / Execute
+- TLV multi-resource read/write and Execute
 - DTLS (X.509 / RPK)
 - Object 19 and binary code stream support
 - Bootstrap / Queue Mode / OSCORE

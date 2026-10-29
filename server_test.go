@@ -104,3 +104,29 @@ func TestRegistrationLifecycle(t *testing.T) {
 		t.Fatalf("count after delete = %d", srv.Count())
 	}
 }
+
+func TestResourceReadWrite(t *testing.T) {
+	srv := startServer(t)
+	put := exchange(t, srv, coap.Message{
+		Type: coap.Confirmable, Code: coap.CodePUT, MessageID: 11,
+		Options: options("objects", "3303", "0", "5700"),
+		Payload: []byte("21.5"),
+	})
+	if put.Code != coap.CodeChanged {
+		t.Fatalf("put code = %v", put.Code)
+	}
+	get := exchange(t, srv, coap.Message{
+		Type: coap.Confirmable, Code: coap.CodeGET, MessageID: 12,
+		Options: options("objects", "3303", "0", "5700"),
+	})
+	if get.Code != coap.CodeContent || string(get.Payload) != "21.5" {
+		t.Fatalf("get = %v %q", get.Code, get.Payload)
+	}
+	missing := exchange(t, srv, coap.Message{
+		Type: coap.Confirmable, Code: coap.CodeGET, MessageID: 13,
+		Options: options("objects", "3303", "0", "9999"),
+	})
+	if missing.Code != coap.CodeNotFound {
+		t.Fatalf("missing code = %v", missing.Code)
+	}
+}

@@ -37,11 +37,14 @@ type Server struct {
 	coap *gcoap.Server
 	mu   sync.RWMutex
 	regs map[string]*Registration
+
+	objMu   sync.RWMutex
+	objects map[string][]byte
 }
 
 // New creates a server and registers the /rd endpoints.
 func New(cfg Config) (*Server, error) {
-	s := &Server{regs: make(map[string]*Registration)}
+	s := &Server{regs: make(map[string]*Registration), objects: make(map[string][]byte)}
 	cs, err := gcoap.New(gcoap.Config{Addr: cfg.Addr})
 	if err != nil {
 		return nil, err
@@ -49,6 +52,8 @@ func New(cfg Config) (*Server, error) {
 	cs.Handle(coap.CodePOST, "/rd", s.handleRegister)
 	cs.HandlePrefix(coap.CodePOST, "/rd", s.handleUpdate)
 	cs.HandlePrefix(coap.CodeDELETE, "/rd", s.handleDelete)
+	cs.HandlePrefix(coap.CodeGET, "/objects", s.handleRead)
+	cs.HandlePrefix(coap.CodePUT, "/objects", s.handleWrite)
 	s.coap = cs
 	return s, nil
 }
@@ -148,6 +153,66 @@ func (s *Server) handleDelete(_ context.Context, req gcoap.Request) gcoap.Respon
 	}
 	delete(s.regs, id)
 	return gcoap.Response{Code: coap.CodeDeleted}
+}
+
+// SetResource stores a LwM2M resource value (text/plain, single resource).
+func (s *Server) SetResource(objectID, instanceID, resourceID uint16, value []byte) {
+	s.objMu.Lock()
+	s.objects[resourceKey(objectID, instanceID, resourceID)] = append([]byte(nil), value...)
+	s.objMu.Unlock()
+}
+
+// Resource returns a resource value.
+func (s *Server) Resource(objectID, instanceID, resourceID uint16) ([]byte, bool) {
+	s.objMu.RLock()
+	defer s.objMu.RUnlock()
+	v, ok := s.objects[resourceKey(objectID, instanceID, resourceID)]
+	return append([]byte(nil), v...), ok
+}
+
+func resourceKey(objectID, instanceID, resourceID uint16) string {
+	return strconv.Itoa(int(objectID)) + "/" + strconv.Itoa(int(instanceID)) + "/" + strconv.Itoa(int(resourceID))
+}
+
+func parseResourcePath(path string) (objectID, instanceID, resourceID uint16, ok bool) {
+	segs := strings.Split(strings.Trim(path, "/"), "/")
+	if len(segs) != 4 || segs[0] != "objects" {
+		return 0, 0, 0, false
+	}
+	vals := make([]int, 3)
+	for i := 1; i < 4; i++ {
+		n, err := strconv.Atoi(segs[i])
+		if err != nil || n < 0 || n > 65535 {
+			return 0, 0, 0, false
+		}
+		vals[i-1] = n
+	}
+	return uint16(vals[0]), uint16(vals[1]), uint16(vals[2]), true
+}
+
+func (s *Server) handleRead(_ context.Context, req gcoap.Request) gcoap.Response {
+	oid, iid, rid, ok := parseResourcePath(req.Path)
+	if !ok {
+		return gcoap.Response{Code: coap.CodeBadRequest}
+	}
+	value, ok := s.Resource(oid, iid, rid)
+	if !ok {
+		return gcoap.Response{Code: coap.CodeNotFound}
+	}
+	return gcoap.Response{
+		Code:    coap.CodeContent,
+		Options: []coap.Option{{Number: coap.OptionContentFormat, Value: []byte{0}}}, // text/plain
+		Payload: value,
+	}
+}
+
+func (s *Server) handleWrite(_ context.Context, req gcoap.Request) gcoap.Response {
+	oid, iid, rid, ok := parseResourcePath(req.Path)
+	if !ok {
+		return gcoap.Response{Code: coap.CodeBadRequest}
+	}
+	s.SetResource(oid, iid, rid, req.Payload)
+	return gcoap.Response{Code: coap.CodeChanged}
 }
 
 func registrationID(path string) string {
