@@ -18,8 +18,7 @@ import (
 	"github.com/maxid/gcoap"
 	"github.com/maxid/gnety"
 	"github.com/maxid/gnety/codec/coap"
-
-	"github.com/maxid/glwm2m/tlv"
+	"github.com/maxid/gnety/codec/tlv"
 )
 
 // Registration is one LwM2M client registration.

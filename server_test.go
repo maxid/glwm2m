@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/maxid/gnety/codec/coap"
-
-	"github.com/maxid/glwm2m/tlv"
+	"github.com/maxid/gnety/codec/tlv"
 )
 
 func startServer(t *testing.T) *Server {

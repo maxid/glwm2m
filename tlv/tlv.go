@@ -1,186 +1,67 @@
-// Package tlv implements the OMA LwM2M TLV wire format.
+// Package tlv is a compatibility shim over github.com/maxid/gnety/codec/tlv.
+//
+// The LwM2M TLV wire format used to be implemented here. It now lives in
+// gnety's codec layer, where every protocol codec in the stack shares one
+// bounded, classified implementation. This package keeps the import path
+// working for existing callers and carries no wire knowledge of its own: the
+// types are aliases of gnety's and both functions delegate.
+//
+// New code should import github.com/maxid/gnety/codec/tlv directly; the LwM2M
+// server engine in this module does. Expect this package to be dropped in a
+// future major version.
 package tlv
 
 import (
-	"encoding/binary"
-	"errors"
-	"fmt"
+	"github.com/maxid/gnety/codec/tlv"
+	"github.com/maxid/gnety/codec/wire"
 )
 
 // Type is the LwM2M TLV type.
-type Type uint8
+type Type = tlv.Type
 
+// TLV types, aliases of the gnety constants.
 const (
-	ObjectInstance   Type = 0
-	ResourceInstance Type = 1
-	MultipleResource Type = 2
-	ResourceValue    Type = 3
+	// ObjectInstance is type 00: an object instance container.
+	ObjectInstance = tlv.ObjectInstance
+	// ResourceInstance is type 01: a resource instance leaf.
+	ResourceInstance = tlv.ResourceInstance
+	// MultipleResource is type 10: a multiple resource container.
+	MultipleResource = tlv.MultipleResource
+	// ResourceValue is type 11: a resource with a value.
+	ResourceValue = tlv.ResourceValue
 )
 
-// Entry is one TLV entry. Containers use Children; leaves use Value.
-type Entry struct {
-	Type     Type
-	ID       uint16
-	Value    []byte
-	Children []Entry
-}
+// Entry is one TLV entry. It is an alias, so an Entry built here can be passed
+// to gnety's functions and the other way round.
+type Entry = tlv.Entry
 
-var ErrMalformed = errors.New("lwm2m tlv: malformed")
+// Limits the codec enforces. See gnety's tlv package for what each one bounds.
+const (
+	// DefaultMaxSize bounds one payload when the caller sets no limit.
+	DefaultMaxSize = tlv.DefaultMaxSize
+	// MaxDepth is the deepest nesting the codec accepts.
+	MaxDepth = tlv.MaxDepth
+	// MaxValueLen is the largest payload one entry can carry.
+	MaxValueLen = tlv.MaxValueLen
+	// MaxID is the largest identifier an entry can carry.
+	MaxID = tlv.MaxID
+)
 
-// Marshal encodes entries.
-func Marshal(entries []Entry) ([]byte, error) {
-	var out []byte
-	for _, e := range entries {
-		b, err := encodeEntry(e)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, b...)
-	}
-	return out, nil
-}
+// ErrMalformed is the sentinel of the codec's malformed errors. It is kept for
+// callers that classified the error this package returned before the move; the
+// codec now classifies every error through codec/wire, so prefer
+// wire.KindOf with wire.ErrMalformed, wire.ErrTooLarge or wire.ErrUnsupported.
+var ErrMalformed = wire.ErrMalformed
 
-func encodeEntry(e Entry) ([]byte, error) {
-	payload := e.Value
-	if e.Type == ObjectInstance || e.Type == MultipleResource {
-		var err error
-		payload, err = Marshal(e.Children)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if e.Type == ResourceValue || e.Type == ResourceInstance {
-		if len(e.Children) > 0 {
-			return nil, fmt.Errorf("%w: leaf has children", ErrMalformed)
-		}
-	}
-	length := len(payload)
-	if length > 0xFFFFFF {
-		return nil, fmt.Errorf("%w: value too large", ErrMalformed)
-	}
+// Marshal encodes entries as one TLV payload. The entries of one scope are
+// emitted in identifier order and the caller's slices are copied, never
+// retained or reordered: see gnety's tlv.Marshal.
+func Marshal(entries []Entry) ([]byte, error) { return tlv.Marshal(entries) }
 
-	header := byte(e.Type << 6)
-	if e.ID > 0xFF {
-		header |= 0x20
-	}
-	switch {
-	case length < 8:
-		// inline 3-bit length
-	case length < 0x100:
-		header |= 0x08
-	case length < 0x10000:
-		header |= 0x10
-	default:
-		header |= 0x18
-	}
-	if length < 8 {
-		header |= byte(length)
-	}
-	out := []byte{header}
-	if e.ID > 0xFF {
-		out = append(out, byte(e.ID>>8), byte(e.ID))
-	} else {
-		out = append(out, byte(e.ID))
-	}
-	switch {
-	case length < 8:
-	case length < 0x100:
-		out = append(out, byte(length))
-	case length < 0x10000:
-		out = append(out, byte(length>>8), byte(length))
-	default:
-		out = append(out, byte(length>>16), byte(length>>8), byte(length))
-	}
-	return append(out, payload...), nil
-}
+// Unmarshal decodes one TLV payload, bounded by DefaultMaxSize. The decoded
+// values never alias data.
+func Unmarshal(data []byte) ([]Entry, error) { return tlv.Unmarshal(data) }
 
-// Unmarshal decodes a TLV byte slice.
-func Unmarshal(data []byte) ([]Entry, error) {
-	entries, rest, err := decodeAll(data)
-	if err != nil {
-		return nil, err
-	}
-	if len(rest) != 0 {
-		return nil, ErrMalformed
-	}
-	return entries, nil
-}
-
-func decodeAll(data []byte) ([]Entry, []byte, error) {
-	var out []Entry
-	for len(data) > 0 {
-		e, rest, err := decodeOne(data)
-		if err != nil {
-			return nil, nil, err
-		}
-		out = append(out, e)
-		data = rest
-	}
-	return out, data, nil
-}
-
-func decodeOne(data []byte) (Entry, []byte, error) {
-	var e Entry
-	if len(data) < 2 {
-		return e, nil, ErrMalformed
-	}
-	header := data[0]
-	e.Type = Type(header >> 6)
-	if e.Type > ResourceValue {
-		return e, nil, ErrMalformed
-	}
-	pos := 1
-	if header&0x20 != 0 {
-		if len(data) < pos+2 {
-			return e, nil, ErrMalformed
-		}
-		e.ID = binary.BigEndian.Uint16(data[pos:])
-		pos += 2
-	} else {
-		e.ID = uint16(data[pos])
-		pos++
-	}
-	lengthType := header & 0x18
-	length := 0
-	switch lengthType {
-	case 0x00:
-		length = int(header & 0x07)
-	case 0x08:
-		if len(data) < pos+1 {
-			return e, nil, ErrMalformed
-		}
-		length = int(data[pos])
-		pos++
-	case 0x10:
-		if len(data) < pos+2 {
-			return e, nil, ErrMalformed
-		}
-		length = int(binary.BigEndian.Uint16(data[pos:]))
-		pos += 2
-	case 0x18:
-		if len(data) < pos+3 {
-			return e, nil, ErrMalformed
-		}
-		length = int(data[pos])<<16 | int(binary.BigEndian.Uint16(data[pos+1:]))
-		pos += 3
-	}
-	if length < 0 || len(data) < pos+length {
-		return e, nil, ErrMalformed
-	}
-	payload := data[pos : pos+length]
-	rest := data[pos+length:]
-	switch e.Type {
-	case ResourceValue, ResourceInstance:
-		e.Value = append([]byte(nil), payload...)
-	case ObjectInstance, MultipleResource:
-		children, innerRest, err := decodeAll(payload)
-		if err != nil {
-			return e, nil, err
-		}
-		if len(innerRest) != 0 {
-			return e, nil, ErrMalformed
-		}
-		e.Children = children
-	}
-	return e, rest, nil
-}
+// ParseLimit decodes one TLV payload that is at most maxSize bytes. A
+// non-positive maxSize means DefaultMaxSize.
+func ParseLimit(data []byte, maxSize int) ([]Entry, error) { return tlv.ParseLimit(data, maxSize) }

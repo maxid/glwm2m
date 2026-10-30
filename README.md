@@ -18,6 +18,9 @@ A LwM2M server engine in Go.
 - In-memory registration registry with endpoint/lifetime/binding/version
 - Single-resource read/write (text/plain): `GET/PUT /objects/{oid}/{iid}/{rid}`
 - Object/instance read/write in LwM2M TLV: `GET/PUT /objects/{oid}` and `/objects/{oid}/{iid}`
+  (the TLV wire format itself lives in
+  [`gnety/codec/tlv`](https://github.com/maxid/gnety); this module's `tlv`
+  package is a compatibility shim over it)
 - Execute: `POST /objects/{oid}/{iid}/{rid}` → `2.04 Changed`
 - Observe/Notify: GET + Observe=0; resource/instance/object writes trigger notifications
 - DTLS transport (server side) via gcoap/gnety
