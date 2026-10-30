@@ -2,8 +2,10 @@
 
 A LwM2M server engine in Go.
 
-> Status: **development snapshot (untagged)** — registration/update/deregistration
-> state machine on CoAP/UDP. Observe, read/write/execute and DTLS are roadmap.
+> Status: **development snapshot (untagged)** — registration/update/deregistration,
+> local object read/write/execute, Observe/Notify and DTLS on CoAP/UDP.
+> Server-initiated device management, registration expiry and full object-model
+> validation are not complete.
 > No tags are published until a stable release; use commit pseudo-versions.
 
 ## Implemented
