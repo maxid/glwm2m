@@ -39,6 +39,19 @@ srv, _ := glwm2m.New(glwm2m.Config{Addr: ":5683"})
 _ = srv.Start(context.Background())
 ```
 
+## Runnable examples
+
+[`examples/registration-demo`](examples/registration-demo/main.go) starts a
+server on an ephemeral loopback port, registers one simulated device over CoAP
+and reads a resource back through the server API. glwm2m has no client type, so
+the device side uses gcoap, the same library the server is built on; the
+registration is the real `POST /rd?ep=...&lt=...&b=...&lwm2m=...` request:
+
+```sh
+go run ./examples/registration-demo
+go run ./examples/registration-demo -addr 127.0.0.1:5683 -endpoint demo-device
+```
+
 ## Versioning
 
 See [VERSIONING.md](VERSIONING.md).

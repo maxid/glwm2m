@@ -39,6 +39,18 @@ srv, _ := glwm2m.New(glwm2m.Config{Addr: ":5683"})
 _ = srv.Start(context.Background())
 ```
 
+## 可运行示例
+
+[`examples/registration-demo`](examples/registration-demo/main.go) 在回环地址的临时端口上启动服务端，
+经 CoAP 注册一个模拟设备，并通过服务端 API 读回一个资源。glwm2m 不提供客户端类型，
+因此设备侧使用构建服务端的同一个库 gcoap；注册请求就是设备真实发送的
+`POST /rd?ep=...&lt=...&b=...&lwm2m=...`：
+
+```sh
+go run ./examples/registration-demo
+go run ./examples/registration-demo -addr 127.0.0.1:5683 -endpoint demo-device
+```
+
 ## 版本管理
 
 见 [VERSIONING.md](VERSIONING.md)。
