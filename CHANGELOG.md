@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+- Object 19 (Binary App Data Container): `BinaryAppDataObject()` is the standard
+  registry definition (Data Opaque/multiple R/W; Data Priority, Data Creation
+  Time, Data Description, Data Format and App ID). Server-side helpers
+  `CreateBinaryDataInstance`, `ReadBinaryData`, `WriteBinaryData`,
+  `WriteBinaryDataInstance` and `DeleteBinaryDataInstance` speak the real
+  protocol to a registered device; Data travels as a TLV `MultipleResource` so
+  resource instance identifiers survive, and payloads above the CoAP block size
+  are uploaded with Block1. The local object tree accepts an Object Instance TLV
+  at `PUT /objects/19` and answers `2.01 Created`. `Config.DownlinkMaxRequestSize`
+  bounds a downlink request body.
 - Registration lifecycle: `ExpiryInterval` scans and expires registrations once
   each (`EventExpired`); a duplicate endpoint replaces the previous registration
   with an incremented epoch, or is rejected with 4.09 when

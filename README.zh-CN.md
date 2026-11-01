@@ -27,6 +27,9 @@
 - `EventSink` 接收 `registered`、`updated`、`deregistered`（原因 `client`/`replaced`）与
   `expired`，回调在锁外执行
 - `MaxRegistrations` 限制注册数（超出回 5.03）
+- Object 19（Binary App Data Container）：`BinaryAppDataObject()` 定义、服务器侧
+  `CreateBinaryDataInstance`/`ReadBinaryData`/`WriteBinaryData`/`DeleteBinaryDataInstance`
+  与分块二进制传输，本地 `/objects/19` 同样支持
 - 单资源读/写（text/plain）：`GET/PUT /objects/{oid}/{iid}/{rid}`
 - 以 LwM2M TLV 进行对象/实例读/写：`GET/PUT /objects/{oid}` 与 `/objects/{oid}/{iid}`
   （TLV 线格式本身位于
@@ -72,6 +75,39 @@ defer observation.Cancel(context.Background())
 
 下行使用客户端注册时的源地址，这是 LwM2M 的标准假设：客户端在自己的注册 socket 上处理请求。
 DTLS 设置 `Config.DownlinkTLS`；其他传输或需要覆盖地址时使用 `Config.DownlinkDialer`。
+`DownlinkMaxRequestSize` 限制单次下行请求体（含 Block1）。
+
+## Object 19：Binary App Data Container
+
+`BinaryAppDataObject()` 返回标准 Object 19 定义，可直接放入对象注册表：
+
+| Resource | 类型 | 操作 |
+| --- | --- | --- |
+| 0 Data | Opaque，多实例 | R/W |
+| 1 Data Priority | Integer | R/W |
+| 2 Data Creation Time | Time | R |
+| 3 Data Description | String | R/W |
+| 4 Data Format | String | R/W |
+| 5 App ID | Integer | R/W |
+
+Data 资源可保存多个二进制值，每个用 resource instance ID 区分。服务器侧 helper 向已注册设备发送
+真实协议请求：
+
+```go
+// 创建 /19 实例并携带 4 KiB 二进制数据；Block1 自动分块。
+instanceID, err := srv.CreateBinaryDataInstance(ctx, registrationID, []glwm2m.BinaryData{
+    {ID: 7, Value: payload},
+})
+
+values, err := srv.ReadBinaryData(ctx, registrationID, instanceID) // GET /19/{iid}/0
+err = srv.WriteBinaryDataInstance(ctx, registrationID, instanceID, glwm2m.BinaryData{ID: 7, Value: next})
+err = srv.WriteBinaryData(ctx, registrationID, instanceID, values) // 替换 Data 集合
+err = srv.DeleteBinaryDataInstance(ctx, registrationID, instanceID)
+```
+
+超过 CoAP 块大小的 payload 自动走 Block1，大 TLV 读取由 Block2 组装；Data 以 TLV
+`MultipleResource` 传输，保留 resource instance ID。本地 `/objects` 树同样支持该对象：
+对 `/objects/19` 发送 Object Instance TLV 的 `PUT` 会创建实例并返回 `2.01 Created`。
 
 ## 配置
 
@@ -83,6 +119,7 @@ DTLS 设置 `Config.DownlinkTLS`；其他传输或需要覆盖地址时使用 `C
 | `MaxRegistrations` | 1024 | 注册上限（超出回 5.03） |
 | `RejectEndpointConflict` | false | 重复 endpoint 回 4.09，而不是替换 |
 | `DownlinkTimeout` | 10s | 单次下行默认超时 |
+| `DownlinkMaxRequestSize` | gcoap 默认（1 MiB） | 单次下行请求体上限 |
 | `DownlinkTLS` | — | 下行 DTLS 客户端配置 |
 | `DownlinkDialer` | — | 自定义下行 dialer |
 | `Events` | nil | 注册生命周期事件 |
@@ -90,7 +127,6 @@ DTLS 设置 `Config.DownlinkTLS`；其他传输或需要覆盖地址时使用 `C
 
 ## 计划中
 
-- Object 19 与二进制代码流支持
 - Bootstrap / Queue Mode / OSCORE
 - 可插拔注册存储与 per-peer 下行配额
 - 真机/模拟器互操作矩阵

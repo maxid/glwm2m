@@ -7,8 +7,9 @@ A LwM2M server engine in Go.
 > Status: **development snapshot (untagged)** — registration lifecycle with
 > expiry, endpoint-conflict policies and peer binding; server-initiated
 > Read/Write/Execute/Observe over UDP and DTLS; object-model validation with
-> multiple-resource TLV and atomic writes; local object tree, Observe/Notify and
-> DTLS on CoAP.
+> multiple-resource TLV and atomic writes; Object 19 Binary App Data Container
+> with block-wise binary transfer; local object tree, Observe/Notify and DTLS on
+> CoAP.
 > No tags are published until a stable release; use commit pseudo-versions.
 
 ## Implemented
@@ -51,6 +52,10 @@ A LwM2M server engine in Go.
   executes (4.05), and invalid values (4.00). Multiple resources keep their
   instance identifiers in TLV (`MultipleResource`/`ResourceInstance`), and a
   TLV write is validated completely before any value is applied
+- Object 19 (Binary App Data Container): `BinaryAppDataObject()` definition,
+  server-side `CreateBinaryDataInstance`/`ReadBinaryData`/`WriteBinaryData`/
+  `DeleteBinaryDataInstance` with block-wise binary transfer, and local
+  `/objects/19` support
 
 ## Server-initiated management
 
@@ -81,7 +86,44 @@ defer observation.Cancel(context.Background())
 A downlink uses the address the client registered from, which is the standard
 LwM2M assumption that a client serves requests on its registration socket. For
 DTLS set `Config.DownlinkTLS`; for any other transport (or to override the
-address) use `Config.DownlinkDialer`.
+address) use `Config.DownlinkDialer`. `DownlinkMaxRequestSize` bounds a
+downlink body (Block1 included).
+
+## Object 19: Binary App Data Container
+
+`BinaryAppDataObject()` returns the standard Object 19 definition for the object
+registry:
+
+| Resource | Type | Operations |
+| --- | --- | --- |
+| 0 Data | Opaque, multiple | R/W |
+| 1 Data Priority | Integer | R/W |
+| 2 Data Creation Time | Time | R |
+| 3 Data Description | String | R/W |
+| 4 Data Format | String | R/W |
+| 5 App ID | Integer | R/W |
+
+The Data resource holds one or more binary values, each addressed by a resource
+instance identifier. The server-side helpers speak the real protocol to a
+registered device:
+
+```go
+// Create /19 instance with 4 KiB of binary data; Block1 carries it.
+instanceID, err := srv.CreateBinaryDataInstance(ctx, registrationID, []glwm2m.BinaryData{
+    {ID: 7, Value: payload},
+})
+
+values, err := srv.ReadBinaryData(ctx, registrationID, instanceID) // GET /19/{iid}/0
+err = srv.WriteBinaryDataInstance(ctx, registrationID, instanceID, glwm2m.BinaryData{ID: 7, Value: next})
+err = srv.WriteBinaryData(ctx, registrationID, instanceID, values) // replaces the Data set
+err = srv.DeleteBinaryDataInstance(ctx, registrationID, instanceID)
+```
+
+Payloads larger than the CoAP block size are uploaded with Block1 automatically,
+and a large TLV read is assembled from Block2. The Data resource travels as a TLV
+`MultipleResource`, so resource instance identifiers are preserved. The local
+`/objects` tree supports the same object: a `PUT /objects/19` with an Object
+Instance TLV creates an instance and returns `2.01 Created`.
 
 ## Configuration
 
@@ -93,6 +135,7 @@ address) use `Config.DownlinkDialer`.
 | `MaxRegistrations` | 1024 | registry bound (5.03 beyond it) |
 | `RejectEndpointConflict` | false | reject a duplicate endpoint with 4.09 instead of replacing |
 | `DownlinkTimeout` | 10s | default per-operation timeout |
+| `DownlinkMaxRequestSize` | gcoap default (1 MiB) | bound on one downlink request body |
 | `DownlinkTLS` | — | DTLS client configuration for callbacks |
 | `DownlinkDialer` | — | custom downlink dialer |
 | `Events` | nil | registration lifecycle sink |
@@ -100,7 +143,6 @@ address) use `Config.DownlinkDialer`.
 
 ## Planned
 
-- Object 19 and binary code stream support
 - Bootstrap / Queue Mode / OSCORE
 - Pluggable registration storage and per-peer downlink quotas
 - A real-device/simulator interoperability matrix
