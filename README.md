@@ -4,10 +4,11 @@ English | [简体中文](README.zh-CN.md)
 
 A LwM2M server engine in Go.
 
-> Status: **development snapshot (untagged)** — registration/update/deregistration,
-> local object read/write/execute, Observe/Notify and DTLS on CoAP/UDP.
-> Server-initiated device management, registration expiry and full object-model
-> validation are not complete.
+> Status: **development snapshot (untagged)** — registration lifecycle with
+> expiry, endpoint-conflict policies and peer binding; server-initiated
+> Read/Write/Execute/Observe over UDP and DTLS; object-model validation with
+> multiple-resource TLV and atomic writes; local object tree, Observe/Notify and
+> DTLS on CoAP.
 > No tags are published until a stable release; use commit pseudo-versions.
 
 ## Implemented
@@ -17,7 +18,19 @@ A LwM2M server engine in Go.
 - Registration: `POST /rd?ep=...&lt=...&b=...` → `2.01 Created` + Location-Path
 - Update: `POST /rd/{id}` → `2.04 Changed`
 - Deregistration: `DELETE /rd/{id}` → `2.02 Deleted`
-- In-memory registration registry with endpoint/lifetime/binding/version
+- In-memory registration registry with endpoint/lifetime/binding/version/object
+  links/peer, `RegisteredAt`, `LastSeen`, `ExpiresAt` and an epoch
+- Expiry scan (`ExpiryInterval`) with one event per expired registration; a
+  lifetime above `MaxLifetime` is clamped, an invalid one is 4.00
+- Endpoint conflicts replace the previous registration by default (epoch
+  incremented, old one deregistered with reason `replaced`), or are rejected
+  with 4.09 when `RejectEndpointConflict` is set
+- Update and delete are bound to the peer that registered the endpoint; another
+  peer gets 4.04. A moved peer refreshes the binding and drops its cached
+  downlink
+- `EventSink` receives `registered`, `updated`, `deregistered` (reason `client`
+  or `replaced`) and `expired` events, called outside the server lock
+- `MaxRegistrations` bounds the registry (5.03 beyond it)
 - Single-resource read/write (text/plain): `GET/PUT /objects/{oid}/{iid}/{rid}`
 - Object/instance read/write in LwM2M TLV: `GET/PUT /objects/{oid}` and `/objects/{oid}/{iid}`
   (the TLV wire format itself lives in
@@ -26,11 +39,71 @@ A LwM2M server engine in Go.
 - Execute: `POST /objects/{oid}/{iid}/{rid}` → `2.04 Changed`
 - Observe/Notify: GET + Observe=0; resource/instance/object writes trigger notifications
 - DTLS transport (server side) via gcoap/gnety
+- **Server-initiated device management**: `Server.Read`, `Write`, `Execute` and
+  `Observe` send real CoAP requests to the registered peer, with a per-operation
+  timeout and a cached client per registration. A 4.xx answer is returned as a
+  typed `*OperationError`, not as a transport failure
+- Downlink transports: UDP by default; DTLS through `Config.DownlinkTLS`; a
+  `Config.DownlinkDialer` replaces the dialer entirely (proxy, PSK, tests)
+- Object model: `ObjectDef`/`ResourceDef` declare operations, multiplicity and
+  value types; `NewObjectRegistry` validates them. A configured registry rejects
+  unknown objects/resources (4.04), non-writable writes and non-executable
+  executes (4.05), and invalid values (4.00). Multiple resources keep their
+  instance identifiers in TLV (`MultipleResource`/`ResourceInstance`), and a
+  TLV write is validated completely before any value is applied
+
+## Server-initiated management
+
+```go
+regs := srv.Registrations() // snapshots of every live registration
+instance, resource := uint16(0), uint16(5700)
+
+value, err := srv.Read(ctx, glwm2m.Operation{
+    RegistrationID: regs[0].ID,
+    Path:           glwm2m.Path{ObjectID: 3303, InstanceID: &instance, ResourceID: &resource},
+})
+if err != nil {
+    return err
+}
+
+err = srv.Write(ctx, glwm2m.Operation{
+    RegistrationID: regs[0].ID,
+    Path:           glwm2m.Path{ObjectID: 3303, InstanceID: &instance, ResourceID: &resource},
+    Payload:        []byte("22.5"),
+})
+
+observation, initial, err := srv.Observe(ctx, op, func(value glwm2m.Value) {
+    // later notifications
+})
+defer observation.Cancel(context.Background())
+```
+
+A downlink uses the address the client registered from, which is the standard
+LwM2M assumption that a client serves requests on its registration socket. For
+DTLS set `Config.DownlinkTLS`; for any other transport (or to override the
+address) use `Config.DownlinkDialer`.
+
+## Configuration
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `DefaultLifetime` | 24h | lifetime when the client omits `lt` |
+| `MaxLifetime` | 7d | cap for a requested lifetime |
+| `ExpiryInterval` | 1s | expiry scan interval; negative disables it |
+| `MaxRegistrations` | 1024 | registry bound (5.03 beyond it) |
+| `RejectEndpointConflict` | false | reject a duplicate endpoint with 4.09 instead of replacing |
+| `DownlinkTimeout` | 10s | default per-operation timeout |
+| `DownlinkTLS` | — | DTLS client configuration for callbacks |
+| `DownlinkDialer` | — | custom downlink dialer |
+| `Events` | nil | registration lifecycle sink |
+| `Objects` | nil | object registry; nil keeps the permissive local tree |
 
 ## Planned
 
 - Object 19 and binary code stream support
 - Bootstrap / Queue Mode / OSCORE
+- Pluggable registration storage and per-peer downlink quotas
+- A real-device/simulator interoperability matrix
 
 ## Example
 
