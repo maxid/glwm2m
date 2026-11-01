@@ -1,4 +1,8 @@
-// Package glwm2m is part of the glwm2m project.
+// Package glwm2m implements a LwM2M server engine on top of gcoap.
 //
-// Status: experimental scaffold (v0.0.0-dev). The API is not stable yet.
+// It owns the LwM2M protocol semantics: registration lifecycle (expiry,
+// endpoint conflicts, peer binding and events), server-initiated Read/Write/
+// Execute/Observe, the local object tree, TLV encoding and DTLS transport.
+// Device, product and tenant identity stay in the consumer; this package only
+// sees neutral registrations and peer addresses.
 package glwm2m

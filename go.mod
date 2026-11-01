@@ -3,8 +3,8 @@ module github.com/maxid/glwm2m
 go 1.27
 
 require (
-	github.com/maxid/gcoap v0.0.0-20261029134013-827e0d51d62a
-	github.com/maxid/gnety v0.0.0-20261030131557-4d99ac3c8ca6
+	github.com/maxid/gcoap v0.0.0-20261101093611-3d383559981a
+	github.com/maxid/gnety v0.0.0-20261101095123-3eff0a20f62c
 )
 
 require (
@@ -16,4 +16,3 @@ require (
 	golang.org/x/sys v0.49.0 // indirect
 )
 
-// commit is pushed. Remove this and pin a pseudo-version instead.

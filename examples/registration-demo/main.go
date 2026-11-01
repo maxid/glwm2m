@@ -44,7 +44,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("glwm2m: dial server: %v", err)
 	}
-	defer device.Close()
+	defer func() { _ = device.Close() }()
 
 	// Register: the server answers 2.01 Created and carries the registration
 	// id in the response's path options (the last segment after "rd").

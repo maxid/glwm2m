@@ -55,14 +55,14 @@ func TestRegistrationOverDTLS(t *testing.T) {
 	if err := srv.Start(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	defer srv.Stop(context.Background())
+	defer func() { _ = srv.Stop(context.Background()) }()
 	cli, err := gcoap.DialConfig(context.Background(), gcoap.ClientConfig{
 		Addr: srv.Addr(), Network: "dtls", TLS: gnety.TLSConfig{CAFile: certFile},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer cli.Close()
+	defer func() { _ = cli.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	resp, err := cli.Do(ctx, gcoap.ClientRequest{

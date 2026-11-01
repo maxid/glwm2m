@@ -76,7 +76,7 @@ func TestMalformed(t *testing.T) {
 // payload produce the same bytes and entries as the codec it delegates to, and
 // the aliases are the codec's own types.
 func TestDelegatesToGnety(t *testing.T) {
-	var entry Entry = tlv.Entry{Type: tlv.ResourceValue, ID: 5, Value: []byte("x")}
+	entry := Entry{Type: tlv.ResourceValue, ID: 5, Value: []byte("x")}
 	_ = entry // the assignment is the alias check: Entry is tlv.Entry
 
 	entries := []Entry{{Type: ResourceValue, ID: 2, Value: []byte("b")}, {Type: ResourceValue, ID: 1, Value: []byte("a")}}

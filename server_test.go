@@ -33,9 +33,47 @@ func exchange(t *testing.T, srv *Server, msg coap.Message) coap.Message {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
 	raw, err := msg.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Write(raw); err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 1500)
+	n, err := conn.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := coap.Parse(buf[:n])
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp
+}
+
+// dialPeer opens one UDP socket that stands in for a client.
+func dialPeer(t *testing.T, srv *Server) *net.UDPConn {
+	t.Helper()
+	addr, err := net.ResolveUDPAddr("udp", srv.Addr())
+	if err != nil {
+		t.Fatal(err)
+	}
+	conn, err := net.DialUDP("udp", nil, addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
+	t.Cleanup(func() { _ = conn.Close() })
+	return conn
+}
+
+// exchangeOn sends one request on an existing peer socket.
+func exchangeOn(t *testing.T, conn *net.UDPConn, req coap.Message) coap.Message {
+	t.Helper()
+	raw, err := req.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +102,10 @@ func options(segs ...string) []coap.Option {
 
 func TestRegistrationLifecycle(t *testing.T) {
 	srv := startServer(t)
-	reg := exchange(t, srv, coap.Message{
+	// A client keeps one socket: update and delete are bound to the peer that
+	// registered the endpoint.
+	conn := dialPeer(t, srv)
+	reg := exchangeOn(t, conn, coap.Message{
 		Type: coap.Confirmable, Code: coap.CodePOST, MessageID: 1,
 		Options: append(options("rd"),
 			coap.Option{Number: coap.OptionURIQuery, Value: []byte("ep=dev-1&lt=60&b=U")}),
@@ -87,14 +128,14 @@ func TestRegistrationLifecycle(t *testing.T) {
 	if _, ok := srv.Registration(id); !ok {
 		t.Fatal("registration not found")
 	}
-	upd := exchange(t, srv, coap.Message{
+	upd := exchangeOn(t, conn, coap.Message{
 		Type: coap.Confirmable, Code: coap.CodePOST, MessageID: 2,
 		Options: append(options("rd", id), coap.Option{Number: coap.OptionURIQuery, Value: []byte("lt=120")}),
 	})
 	if upd.Code != coap.CodeChanged {
 		t.Fatalf("update code = %v", upd.Code)
 	}
-	del := exchange(t, srv, coap.Message{
+	del := exchangeOn(t, conn, coap.Message{
 		Type: coap.Confirmable, Code: coap.CodeDELETE, MessageID: 3,
 		Options: options("rd", id),
 	})
@@ -188,13 +229,13 @@ func TestTLVObjectReadWrite(t *testing.T) {
 
 func TestObserveResourceChange(t *testing.T) {
 	srv := startServer(t)
-	srv.SetResource(3303, 0, 5700, []byte("21.5"))
+	_ = srv.SetResource(3303, 0, 5700, []byte("21.5"))
 	addr, _ := net.ResolveUDPAddr("udp", srv.Addr())
 	conn, err := net.DialUDP("udp", nil, addr)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
 	obs := coap.Message{
 		Type: coap.Confirmable, Code: coap.CodeGET, MessageID: 31,
@@ -218,7 +259,7 @@ func TestObserveResourceChange(t *testing.T) {
 	if _, ok := observeOption(initial); !ok {
 		t.Fatal("initial observe response missing Observe option")
 	}
-	srv.SetResource(3303, 0, 5700, []byte("22.0"))
+	_ = srv.SetResource(3303, 0, 5700, []byte("22.0"))
 	n, err = conn.Read(buf)
 	if err != nil {
 		t.Fatal(err)
