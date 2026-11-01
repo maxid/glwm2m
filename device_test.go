@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"sort"
+	"strconv"
 	"sync"
 	"testing"
 
 	"github.com/maxid/gnety/codec/coap"
+	"github.com/maxid/gnety/codec/tlv"
 )
 
 // fakeDevice is a LwM2M client that uses one UDP socket for both roles: it
@@ -25,6 +28,9 @@ type fakeDevice struct {
 
 	mu        sync.Mutex
 	resources map[string]string
+	binary    map[uint16]map[uint16][]byte
+	nextIID   uint16
+	uploads   map[string]*fakeUpload
 	pending   map[string]chan coap.Message
 	observes  map[string]*fakeObserve
 	executed  []string
@@ -40,6 +46,13 @@ type fakeObserve struct {
 	peer  *net.UDPAddr
 }
 
+type fakeUpload struct {
+	path    string
+	data    []byte
+	next    uint32
+	sizeExp uint8
+}
+
 func newFakeDevice(t *testing.T, resources map[string]string) *fakeDevice {
 	t.Helper()
 	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
@@ -53,6 +66,9 @@ func newFakeDevice(t *testing.T, resources map[string]string) *fakeDevice {
 	d := &fakeDevice{
 		t: t, conn: conn, addr: conn.LocalAddr().String(),
 		resources: values,
+		binary:    make(map[uint16]map[uint16][]byte),
+		nextIID:   1,
+		uploads:   make(map[string]*fakeUpload),
 		pending:   make(map[string]chan coap.Message),
 		observes:  make(map[string]*fakeObserve),
 		done:      make(chan struct{}),
@@ -233,6 +249,21 @@ func (d *fakeDevice) loop() {
 
 func (d *fakeDevice) handle(req coap.Message, from *net.UDPAddr) {
 	path := "/" + joinSegments(req.URIPath())
+	if b, ok := req.Block1(); ok {
+		if assembled, more := d.assembleBlock1(req, b, path); more {
+			d.respondBlock1(req, from, b)
+			return
+		} else if assembled != nil {
+			req.Payload = assembled
+		} else {
+			d.respond(req, from, coap.CodeRequestEntityIncomplete, nil)
+			return
+		}
+	}
+	if len(req.URIPath()) > 1 && req.URIPath()[0] == "objects" && req.URIPath()[1] == "19" {
+		d.handleBinary(req, from, req.URIPath()[2:])
+		return
+	}
 
 	switch {
 	case req.Code == coap.CodePOST && path == "/rd":
@@ -259,6 +290,156 @@ func (d *fakeDevice) handle(req coap.Message, from *net.UDPAddr) {
 	default:
 		d.respond(req, from, coap.CodeNotFound, nil)
 	}
+}
+
+// assembleBlock1 adds one block to an upload. assembled is non-nil on the final
+// block; more reports that the server should answer 2.31 Continue.
+func (d *fakeDevice) assembleBlock1(req coap.Message, b coap.Block, path string) (assembled []byte, more bool) {
+	key := string(req.Token)
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	up := d.uploads[key]
+	if b.Num == 0 {
+		up = &fakeUpload{path: path, sizeExp: b.SizeExp}
+		d.uploads[key] = up
+	}
+	if up == nil || up.path != path || b.Num != up.next {
+		delete(d.uploads, key)
+		return nil, false
+	}
+	up.data = append(up.data, req.Payload...)
+	up.next++
+	if b.More {
+		return nil, true
+	}
+	delete(d.uploads, key)
+	return up.data, false
+}
+
+func (d *fakeDevice) respondBlock1(req coap.Message, from *net.UDPAddr, b coap.Block) {
+	options := []coap.Option{}
+	if option, ok := encodeBlock1(b); ok {
+		options = append(options, option)
+	}
+	d.respond(req, from, coap.CodeContinue, nil, options...)
+}
+
+func encodeBlock1(b coap.Block) (coap.Option, bool) {
+	msg := coap.Message{}
+	if err := msg.SetBlock1(b); err != nil {
+		return coap.Option{}, false
+	}
+	value, ok := msg.OptionValue(coap.OptionBlock1)
+	if !ok {
+		return coap.Option{}, false
+	}
+	return coap.Option{Number: coap.OptionBlock1, Value: value}, true
+}
+
+// handleBinary serves the Object 19 subtree of the simulated device.
+func (d *fakeDevice) handleBinary(req coap.Message, from *net.UDPAddr, rest []string) {
+	switch {
+	case len(rest) == 0 && req.Code == coap.CodePUT:
+		entries, err := tlv.Unmarshal(req.Payload)
+		if err != nil {
+			d.respond(req, from, coap.CodeBadRequest, nil)
+			return
+		}
+		iid := d.nextIID
+		d.mu.Lock()
+		d.nextIID++
+		d.mu.Unlock()
+		if len(entries) == 1 && entries[0].Type == tlv.ObjectInstance {
+			entries = entries[0].Children
+		}
+		if !d.applyBinary(iid, entries) {
+			d.respond(req, from, coap.CodeBadRequest, nil)
+			return
+		}
+		d.respond(req, from, coap.CodeCreated, nil,
+			coap.Option{Number: coap.OptionURIPath, Value: []byte("19")},
+			coap.Option{Number: coap.OptionURIPath, Value: []byte(strconv.Itoa(int(iid)))},
+		)
+	case len(rest) == 1 && req.Code == coap.CodeDELETE:
+		iid, err := strconv.Atoi(rest[0])
+		if err != nil {
+			d.respond(req, from, coap.CodeBadRequest, nil)
+			return
+		}
+		d.mu.Lock()
+		_, ok := d.binary[uint16(iid)]
+		delete(d.binary, uint16(iid))
+		d.mu.Unlock()
+		if !ok {
+			d.respond(req, from, coap.CodeNotFound, nil)
+			return
+		}
+		d.respond(req, from, coap.CodeDeleted, nil)
+	case len(rest) == 2 && rest[1] == "0":
+		iid, err := strconv.Atoi(rest[0])
+		if err != nil || iid < 0 || iid > 65535 {
+			d.respond(req, from, coap.CodeBadRequest, nil)
+			return
+		}
+		switch req.Code {
+		case coap.CodeGET:
+			d.mu.Lock()
+			instances, ok := d.binary[uint16(iid)]
+			children := make([]tlv.Entry, 0, len(instances))
+			for id, value := range instances {
+				children = append(children, tlv.Entry{Type: tlv.ResourceInstance, ID: id, Value: append([]byte(nil), value...)})
+			}
+			d.mu.Unlock()
+			if !ok {
+				d.respond(req, from, coap.CodeNotFound, nil)
+				return
+			}
+			sort.Slice(children, func(i, j int) bool { return children[i].ID < children[j].ID })
+			payload, err := tlv.Marshal([]tlv.Entry{{Type: tlv.MultipleResource, ID: 0, Children: children}})
+			if err != nil {
+				d.respond(req, from, coap.CodeInternalServerError, nil)
+				return
+			}
+			d.respond(req, from, coap.CodeContent, payload,
+				coap.Option{Number: coap.OptionContentFormat, Value: []byte{0x2D, 0x16}})
+		case coap.CodePUT:
+			entries, err := tlv.Unmarshal(req.Payload)
+			if err != nil || !d.applyBinary(uint16(iid), entries) {
+				d.respond(req, from, coap.CodeBadRequest, nil)
+				return
+			}
+			d.respond(req, from, coap.CodeChanged, nil)
+		default:
+			d.respond(req, from, coap.CodeMethodNotAllowed, nil)
+		}
+	default:
+		d.respond(req, from, coap.CodeNotFound, nil)
+	}
+}
+
+// applyBinary stores the Data instances of one Object 19 instance.
+func (d *fakeDevice) applyBinary(iid uint16, entries []tlv.Entry) bool {
+	instances := make(map[uint16][]byte)
+	seen := false
+	for _, entry := range entries {
+		if entry.Type != tlv.MultipleResource || entry.ID != 0 {
+			continue
+		}
+		seen = true
+		for _, child := range entry.Children {
+			if child.Type != tlv.ResourceInstance {
+				return false
+			}
+			instances[child.ID] = append([]byte(nil), child.Value...)
+		}
+	}
+	if !seen {
+		return false
+	}
+	d.mu.Lock()
+	d.binary[iid] = instances
+	d.mu.Unlock()
+	return true
 }
 
 func (d *fakeDevice) handleRead(req coap.Message, from *net.UDPAddr, path string) {

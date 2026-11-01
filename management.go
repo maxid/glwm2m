@@ -143,9 +143,10 @@ func (s *Server) downlinkClient(ctx context.Context, reg Registration) (*gcoap.C
 			network = "udp"
 		}
 		cli, err = gcoap.DialConfig(ctx, gcoap.ClientConfig{
-			Network: network,
-			Addr:    reg.Peer.Addr,
-			TLS:     s.cfg.DownlinkTLS,
+			Network:        network,
+			Addr:           reg.Peer.Addr,
+			TLS:            s.cfg.DownlinkTLS,
+			MaxRequestSize: s.cfg.DownlinkMaxRequestSize,
 		})
 	}
 	if err != nil {
@@ -201,9 +202,6 @@ func (s *Server) operationContext(ctx context.Context, op Operation) (context.Co
 
 // do performs one operation against the device and rejects an error response.
 func (s *Server) do(ctx context.Context, reg Registration, req gcoap.ClientRequest, op Operation) (gcoap.ClientResponse, error) {
-	if !op.Path.valid() {
-		return gcoap.ClientResponse{}, ErrInvalidPath
-	}
 	cli, err := s.downlinkClient(ctx, reg)
 	if err != nil {
 		return gcoap.ClientResponse{}, err

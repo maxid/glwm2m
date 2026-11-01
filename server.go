@@ -55,6 +55,9 @@ type Config struct {
 	// DownlinkTimeout bounds one server-initiated operation when the Operation
 	// carries no timeout. Zero keeps DefaultDownlinkTimeout.
 	DownlinkTimeout time.Duration
+	// DownlinkMaxRequestSize bounds one downlink request body, including a
+	// Block1 binary-data upload. Zero keeps gcoap's default (1 MiB).
+	DownlinkMaxRequestSize int
 	// DownlinkTLS configures the DTLS client used to call back a registration
 	// that arrived over DTLS. The same files can carry the server certificate
 	// (client certificate for the callback) and the CA that signs the device.
@@ -431,6 +434,18 @@ func (s *Server) handleWrite(_ context.Context, req gcoap.Request) gcoap.Respons
 		return gcoap.Response{Code: coap.CodeBadRequest}
 	}
 	switch len(ids) {
+	case 1:
+		entries, err := tlv.Unmarshal(req.Payload)
+		if err != nil {
+			return gcoap.Response{Code: coap.CodeBadRequest}
+		}
+		updates, err := s.collectUpdates(ids[0], nil, entries)
+		if err != nil {
+			return gcoap.Response{Code: writeErrorCode(err)}
+		}
+		s.applyUpdates(updates)
+		s.notifyUpdates(updates)
+		return gcoap.Response{Code: coap.CodeCreated}
 	case 2:
 		entries, err := tlv.Unmarshal(req.Payload)
 		if err != nil {
