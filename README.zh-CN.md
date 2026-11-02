@@ -109,6 +109,20 @@ err = srv.DeleteBinaryDataInstance(ctx, registrationID, instanceID)
 `MultipleResource` 传输，保留 resource instance ID。本地 `/objects` 树同样支持该对象：
 对 `/objects/19` 发送 Object Instance TLV 的 `PUT` 会创建实例并返回 `2.01 Created`。
 
+## 扩展点
+
+扩展面是 `EventSink`——一个 `OnRegistration` 方法，在服务端锁之外收到 `registered`、
+`updated`、`deregistered`、`expired`。`EventSinkFunc` 可以直接把普通函数当 sink 用，通常
+不需要另起类型。
+
+它有意留在根包而不是 `hook` 子包：事件携带 `Registration`，那是本库的核心模型，单独成包只能
+要么 import 根包（成环），要么持有并非扩展的类型。契约只引用外部类型时（如 CoAP、Modbus 兄弟库的
+`Metrics`）才适合独立成包；属于模型的一部分，就留在模型旁边。
+
+要让扩展在运行期可开关、可观测，把服务端套进插件注册表：
+[`gplugin`](https://github.com/maxid/gplugin) 的 `gplugin.NewRegistry(server)` 提供具名插件、
+三态生命周期、观察者与单品启停；本包只定义"插件能插到哪里"。
+
 ## 配置
 
 | 字段 | 默认 | 含义 |

@@ -125,6 +125,24 @@ and a large TLV read is assembled from Block2. The Data resource travels as a TL
 `/objects` tree supports the same object: a `PUT /objects/19` with an Object
 Instance TLV creates an instance and returns `2.01 Created`.
 
+## Extension points
+
+The extension surface is `EventSink` — one method, `OnRegistration`, called outside the
+server lock for `registered`, `updated`, `deregistered` and `expired`. `EventSinkFunc`
+adapts a plain function, so a consumer rarely needs a named type.
+
+It deliberately stays in the root package instead of a `hook` subpackage: an event carries
+a `Registration`, which is this library's core model, so a separate package would have to
+either import the root (a cycle) or own a type that is not an extension. Where a contract
+references only foreign types — as `Metrics` does in the CoAP and Modbus siblings — it
+belongs in its own package; where it is part of the model, it stays beside it.
+
+To make extensions switchable at run time — start, stop, inspect — wrap the server in a
+plugin registry: `gplugin.NewRegistry(server)` from
+[`gplugin`](https://github.com/maxid/gplugin) gives named plugins, a three-state lifecycle,
+an observer and per-plugin start/stop; this package only defines what a plugin can plug
+into.
+
 ## Configuration
 
 | Field | Default | Meaning |
