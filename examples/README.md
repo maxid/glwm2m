@@ -72,11 +72,11 @@ go run ./examples/observe-telemetry -serve   # then: coap-client -m post "coap:/
 Expected:
 
 ```
-[1/7] device serving GET /objects/3303/0/5700 on 127.0.0.1:52429
+[1/7] device serving GET /3303/0/5700 on 127.0.0.1:52429
 [2/7] LwM2M server listening on 127.0.0.1:62577, downlink dials the device
 [3/7] device "telemetry-device" registered as a92f3464eec5 (2.01 Created)
-[4/7] server Read /objects/3303/0/5700 -> "21.5"
-[5/7] server Observe /objects/3303/0/5700 -> initial "21.5"
+[4/7] server Read /3303/0/5700 -> "21.5"
+[5/7] server Observe /3303/0/5700 -> initial "21.5"
 [6/7] device reported "22.0" -> server received "22.0" (no request)
 [7/7] device deregistered a92f3464eec5 (2.02)
 [done] registration, read, observe and deregistration complete
@@ -90,10 +90,10 @@ Two implementation notes the output hides:
   listener — the hook the library documents for an address the registration socket
   does not describe. `-serve` does not need it: there the server calls back the
   address a real client registered from.
-- Downlink paths use the same `/objects/{oid}/{iid}/{rid}` form as the server's
-  local endpoints (a stock LwM2M client serves `/3303/0/5700` instead); the
-  deferred Leshan interoperability item in `ROADMAP.md` is what will settle that
-  against a reference implementation.
+- Downlinks use the LwM2M client form `/{oid}/{iid}/{rid}` — the path a real
+  device serves. The server's own `/objects/...` endpoints (used by
+  `registration-demo`) are a different surface and never appear on the wire to a
+  device.
 
 [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) covers the registration and
 observation state machines; [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md) covers

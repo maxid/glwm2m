@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+- **Breaking：** 服务端发起的操作现在用 LwM2M 客户端路径
+  `/{object}[/{instance}[/{resource}]]` 访问设备。此前发的是本服务端自己的 `/objects/...`
+  形式，真实 LwM2M 客户端会回 4.04 —— 也就是 `Read`、`Write`、`Execute`、`Observe` 与
+  Object 19 辅助函数只能打到达本库本地端点形态的设备。`Path.String()` 现在渲染客户端形式，
+  `CreateBinaryDataInstance`/`DeleteBinaryDataInstance` 的请求也随之改变。走导出 API 的程序
+  不需要改；只有设备侧曾按 `/objects/...` 提供对象的 handler 需要换成 LwM2M 路径。本服务端
+  自身的 `/objects/...` 端点不变。
+
 - 两个可运行示例与双语的 `examples/README`：`registration-demo`（注册生命周期、服务端解析出的
   注册、本地对象树对一次写入的应答，以及外部 LwM2M 客户端可注册的 `-serve` 模式）与
   `observe-telemetry`（服务端发起的 Read 与 Observe，随后设备上报以通知形式到达）。两者都打印

@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+- **Breaking:** a server-initiated operation now addresses the device with the
+  LwM2M client path `/{object}[/{instance}[/{resource}]]`. It used to send the
+  server's own `/objects/...` form, which a real LwM2M client answers with 4.04 —
+  so `Read`, `Write`, `Execute`, `Observe` and the Object 19 helpers could not
+  reach anything but a device that mimicked this library's local endpoints.
+  `Path.String()` renders the client form, and `CreateBinaryDataInstance` /
+  `DeleteBinaryDataInstance` use it for their requests. Code that goes through
+  the exported API needs no change; only a device-side handler that served
+  `/objects/...` has to move to the LwM2M path. The local `/objects/...` endpoints
+  of this server are unchanged.
+
 - Two runnable examples with a bilingual `examples/README`: `registration-demo`
   (the registration lifecycle, the parsed registration, a local-object answer and
   a `-serve` mode an external LwM2M client can register with) and

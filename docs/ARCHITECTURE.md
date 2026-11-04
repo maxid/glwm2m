@@ -105,10 +105,9 @@ to the callback on the downlink client's receive goroutine — it must not block
 observation ends with `Cancel`, with `Client.Close`, or when the registration's
 cached client is closed by deregistration, expiry or `Server.Stop`.
 
-Downlink paths use the same `/objects/{oid}[/{iid}[/{rid}]]` form as the local
-endpoints. A stock LwM2M client serves `/{oid}/{iid}/{rid}` instead; the
-interoperability item in `ROADMAP.md` is what will settle that against a reference
-implementation (Leshan).
+Downlinks use the path a LwM2M client serves: `/{oid}[/{iid}[/{rid}]]`. The
+library's own `/objects/...` endpoints are the server side only and never appear on
+the wire to a device.
 
 ## Concurrency
 
@@ -146,8 +145,7 @@ come from gcoap's defaults; `glwm2m.Config` does not expose them today.
 ## Known gaps
 
 - **Interoperability with a reference implementation** (Leshan, a vendor simulator or
-  a real device) is still a `ROADMAP.md` item; the downlink path form above is the
-  first thing it will exercise.
+  a real device) is still a `ROADMAP.md` item.
 - **No bootstrap interface.** A device must be provisioned with the server URI.
 - **Certificate-only DTLS.** gnety's transport has no pre-shared-key mode; see
   `DEPLOYMENT.md`.

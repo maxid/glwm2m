@@ -63,11 +63,11 @@ go run ./examples/observe-telemetry -serve   # 然后：coap-client -m post "coa
 应该看到：
 
 ```
-[1/7] device serving GET /objects/3303/0/5700 on 127.0.0.1:52429
+[1/7] device serving GET /3303/0/5700 on 127.0.0.1:52429
 [2/7] LwM2M server listening on 127.0.0.1:62577, downlink dials the device
 [3/7] device "telemetry-device" registered as a92f3464eec5 (2.01 Created)
-[4/7] server Read /objects/3303/0/5700 -> "21.5"
-[5/7] server Observe /objects/3303/0/5700 -> initial "21.5"
+[4/7] server Read /3303/0/5700 -> "21.5"
+[5/7] server Observe /3303/0/5700 -> initial "21.5"
 [6/7] device reported "22.0" -> server received "22.0" (no request)
 [7/7] device deregistered a92f3464eec5 (2.02)
 [done] registration, read, observe and deregistration complete
@@ -79,8 +79,8 @@ go run ./examples/observe-telemetry -serve   # 然后：coap-client -m post "coa
   gcoap 的客户端与服务端各自持有独立的 socket，所以示例用 `Config.DownlinkDialer` 把下行
   指向设备监听地址 —— 这正是库文档里为「注册来源地址描述不了的地址」准备的钩子。
   `-serve` 不需要它：那里服务端回拨的是真实客户端注册时用的地址。
-- 下行路径与服务端本地端点使用同一种 `/objects/{oid}/{iid}/{rid}` 形式（标准 LwM2M 客户端
-  服务的是 `/3303/0/5700`）；`ROADMAP.md` 里待做的 Leshan 互操作会用参考实现把这处对齐。
+- 下行使用 LwM2M 客户端形式 `/{oid}/{iid}/{rid}` —— 真机服务的就是这个路径。服务端自己的
+  `/objects/...` 端点（`registration-demo` 用的那个）是另一层接口，不会出现在发给设备的线路上。
 
 注册与观察的状态机见 [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.zh-CN.md)；bootstrap、
 DTLS/PSK 取舍与注册存储的选型见 [`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.zh-CN.md)。

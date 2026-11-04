@@ -30,10 +30,10 @@ import (
 
 const (
 	steps = 7
-	// resource is the device-side path both roles address. glwm2m's downlink
-	// paths use the same "/objects/{oid}/{iid}/{rid}" form as its local
-	// endpoints.
-	resource = "/objects/3303/0/5700"
+	// resource is the device-side path both roles address: what a LwM2M client
+	// serves for Object 3303, instance 0, resource 5700. The library's own
+	// "/objects/..." endpoints are the server side and are not involved here.
+	resource = "/3303/0/5700"
 )
 
 func main() {
