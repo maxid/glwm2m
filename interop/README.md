@@ -37,10 +37,9 @@ JDK 17, which the GitHub ubuntu image already has.
   session the registration arrived on (`gcoap.Server.DoTo`), so Leshan accepts it
   and answers the Device object's manufacturer — a request from any other source is
   rejected as "unknown server".
-- **A remaining gap, on purpose.** `Observe` still dials a separate client, so
-  Leshan answers it `5.00 "unknown server"`; the test records that instead of
-  hiding it and fails when the gap is fixed, which is the signal to update
-  `ROADMAP.md`, `docs/ARCHITECTURE.md` and the test together.
+- **Observe over the same session.** `Server.Observe` registers with `Observe=0`
+  over the registration's session; Leshan accepts it, answers the initial value and
+  acknowledges the deregistration on cancel.
 
 ## Not covered
 

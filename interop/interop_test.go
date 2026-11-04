@@ -17,16 +17,13 @@ package interop
 import (
 	"bytes"
 	"context"
-	"errors"
 	"os"
 	"os/exec"
 	"strconv"
 	"testing"
 	"time"
 
-	"github.com/maxid/gcoap"
 	"github.com/maxid/glwm2m"
-	"github.com/maxid/gnety/codec/coap"
 )
 
 // leshanClientJar returns the jar path and the java binary, or skips.
@@ -180,12 +177,10 @@ func TestLeshanDownlinkRead(t *testing.T) {
 	t.Logf("Leshan /3/0/0 = %q", value.Payload)
 }
 
-// TestLeshanObserveKnownGap records the part that is still open: a downlink
-// Observe still goes through the separately dialed client, so Leshan rejects it
-// with 5.00 "unknown server". The test fails when Observe moves onto the session,
-// which is the signal to update ROADMAP.md, docs/ARCHITECTURE.md and the interop
-// README together.
-func TestLeshanObserveKnownGap(t *testing.T) {
+// TestLeshanObserve registers an observation over the registration's session, the
+// same transport Read uses: Leshan accepts the request because it comes from its
+// server's address, and answers the registration with an Observe option.
+func TestLeshanObserve(t *testing.T) {
 	jar, java := leshanClientJar(t)
 
 	f := startServer(t)
@@ -193,25 +188,24 @@ func TestLeshanObserveKnownGap(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	instance, resource := uint16(0), uint16(13)
+	instance, resource := uint16(0), uint16(13) // Device > Current Time
 	observation, initial, err := f.srv.Observe(ctx, glwm2m.Operation{
 		RegistrationID: registration.ID,
 		Path:           glwm2m.Path{ObjectID: 3, InstanceID: &instance, ResourceID: &resource},
 	}, func(glwm2m.Value) {})
-
-	var rejected *glwm2m.OperationError
-	switch {
-	case err == nil:
-		if observation != nil {
-			_ = observation.Cancel(ctx)
-		}
-		t.Fatalf("Observe /3/0/13 reached Leshan (initial %q): the known gap in ROADMAP.md is fixed; update ROADMAP.md, docs/ARCHITECTURE.md and this test", initial.Payload)
-	case errors.As(err, &rejected) && rejected.Code == coap.CodeInternalServerError:
-		t.Logf("known gap reproduced: Observe answered %s because it uses a separately dialed client", rejected.Code)
-	case errors.Is(err, gcoap.ErrObserveRejected):
-		// gcoap reports a rejected registration before glwm2m can wrap it.
-		t.Logf("known gap reproduced: Observe was rejected with %v because it uses a separately dialed client", err)
-	default:
-		t.Fatalf("Observe /3/0/13 = %v, want Leshan's 5.00 rejection", err)
+	if err != nil {
+		t.Fatalf("Observe /3/0/13 on Leshan: %v", err)
+	}
+	if len(initial.Payload) == 0 {
+		t.Fatal("Observe /3/0/13 returned an empty initial value")
+	}
+	t.Logf("Leshan /3/0/13 initial = %q", initial.Payload)
+	if err := observation.Cancel(ctx); err != nil {
+		t.Fatalf("cancel the observation: %v", err)
+	}
+	select {
+	case <-observation.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("the observation did not end after Cancel")
 	}
 }

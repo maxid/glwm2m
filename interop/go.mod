@@ -6,12 +6,12 @@ module github.com/maxid/glwm2m/interop
 go 1.27
 
 require (
+	github.com/maxid/gcoap v0.0.0-20261104130418-c23575961b84
 	github.com/maxid/glwm2m v0.0.0
 	github.com/maxid/gnety v0.0.0-20261101095123-3eff0a20f62c
 )
 
 require (
-	github.com/maxid/gcoap v0.0.0-20261104124945-b63f83d6d4b1 // indirect
 	github.com/pion/dtls/v2 v2.2.12 // indirect
 	github.com/pion/logging v0.2.2 // indirect
 	github.com/pion/transport/v2 v2.2.4 // indirect

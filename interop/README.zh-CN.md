@@ -31,9 +31,8 @@ go test -tags=integration ./...
 - **Read 走服务端自己的 socket。** `Server.Read` 把请求发在注册到达的那个会话上
   （`gcoap.Server.DoTo`），Leshan 因此接受并答出 Device 对象的厂商 —— 来自其它来源的请求会被
   当作 "unknown server" 拒绝。
-- **一个仍然存在的缺口，故意的。** `Observe` 仍会另拨客户端，Leshan 以 `5.00 "unknown server"`
-  拒绝；测试把这个事实记录下来而不是掩盖它，缺口修好时该测试会失败，提示同时更新
-  `ROADMAP.md`、`docs/ARCHITECTURE.md` 与测试本身。
+- **Observe 走同一个会话。** `Server.Observe` 在注册所在会话上带 `Observe=0` 注册；Leshan
+  接受、答出初始值，并在取消时接受注销。
 
 ## 不覆盖什么
 
