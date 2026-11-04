@@ -30,14 +30,14 @@ engine or persisted by an implementation of the pending pluggable-store item.
 Devices must be reachable at the address their registration came from — or at
 whatever `DownlinkDialer` produces — for any server-initiated operation.
 
-**Today that is not enough for a real device.** A LwM2M client answers only the
-address it registered with, and a downlink is sent from a separate socket, so a
-compliant client rejects it (`interop/` reproduces this with Leshan: `5.00
-"unknown server"`). Registration, update, expiry and deregistration work with real
-clients; server-initiated Read/Write/Execute/Observe need the transport item in
-`ROADMAP.md`. Plan around it: drive values through the engine's local object tree
-and notifications instead of the device, or put a transport in front that keeps
-the source address stable. A device
+Server-initiated Read, Write and Execute are sent over the session the registration
+arrived on, so they leave from the server's own socket — the address a real client
+answers. Two paths still dial a separate client: `Observe`, and a request body above
+one CoAP block (Block1 from the server side is not implemented). Both are
+`ROADMAP.md` items, and `interop/` records the Observe one against Leshan. If your
+fleet needs either today, keep the device's object tree reachable from the server
+address (a proxy that preserves it) or drive values through the engine's local
+object tree and notifications instead. A device
 behind NAT that registers outward but cannot be called back will register, update
 and deregister fine, and the downlink will time out.
 

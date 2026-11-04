@@ -16,9 +16,12 @@
 - [x] Simulated-device end-to-end tests (registration, downlink, observe)
 - [x] Interoperability with an independent implementation: the Eclipse Leshan
       client demo registers and is parsed like our own client (`interop/`)
-- [ ] Downlink over the listener socket: a real client only accepts requests
-      from its registered server address, so server-initiated
-      Read/Write/Execute/Observe do not reach it yet (`interop/` records this)
+- [x] Downlink over the listener socket: Read/Write/Execute are sent over the
+      registration's session (`gcoap.Server.DoTo`), so a real client accepts them
+      (`interop/` proves it with Leshan)
+- [ ] Observe over the listener socket: `Observe` still dials a separate client,
+      which a real client rejects (`interop/` records this)
+- [ ] Block1 from the server side, for a downlink body above one block
 - [ ] Interop with real devices and vendor simulators, both directions
 - [ ] Pluggable registration storage and per-peer downlink quotas
 - [ ] v1.0 API stabilization

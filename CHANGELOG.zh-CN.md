@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+- 服务端发起的 Read、Write、Execute 现在走注册到达的那个会话（`gcoap.Server.DoTo`），
+  请求因此从服务端自己的 socket 发出 —— 合规 LwM2M 客户端只答复这个来源。注册没有活会话、
+  或请求体需要 Block1 时回退到拨号客户端。`Observe` 仍用拨号客户端：`interop/` 记录了 Leshan
+  的拒绝，`ROADMAP.md` 跟踪把它也搬到会话上。
+
 - `interop/`：对独立 LwM2M 实现的互操作模块 —— Eclipse Leshan 客户端 demo（Java/Californium）
   注册到本服务端，解析结果（含对象清单与 lifetime）与库自带客户端一致。该模块也如实记录一个真实
   限制：客户端只答复它注册时用的服务端地址，而下行从自己的 socket 发出，因此 Leshan 会以

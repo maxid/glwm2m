@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+- Server-initiated Read, Write and Execute now go over the session the registration
+  arrived on (`gcoap.Server.DoTo`), so the request leaves from the server's own
+  socket — the only source a compliant LwM2M client answers. A registration without
+  a live session, or a body that would need Block1, falls back to the dialed client.
+  `Observe` still uses the dialed client: `interop/` records the resulting rejection
+  from Leshan, and `ROADMAP.md` tracks moving it onto the session.
+
 - `interop/`, an interoperability module against an independent LwM2M
   implementation: the Eclipse Leshan client demo (Java/Californium) registers with
   this server and is parsed like our own client, links and lifetime included. The

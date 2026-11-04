@@ -144,13 +144,15 @@ come from gcoap's defaults; `glwm2m.Config` does not expose them today.
 
 ## Known gaps
 
-- **A real client rejects the downlink.** A LwM2M client answers only the address it
-  registered with, and a downlink is sent from a separate socket, so Leshan answers it
-  `5.00 "unknown server"` (see `interop/`). Sending over the listener's own session is
-  a `ROADMAP.md` item and needs an outbound-request API on `gcoap.Server`.
-- **Interoperability so far is registration only**: the Eclipse Leshan client registers
-  and is parsed like our own client; real devices and the reverse direction are still
-  open (`ROADMAP.md`).
+- **Observe still dials separately.** Read, Write and Execute go over the
+  registration's session (`gcoap.Server.DoTo`), but `Observe` still uses a dialed
+  `gcoap.Client`, so a real client rejects it (`interop/` reproduces this with
+  Leshan). Moving it onto the session is a `ROADMAP.md` item.
+- **Block1 from the server side does not exist.** A downlink body above one block
+  falls back to the dialed client, so it works only with devices that accept it.
+- **Interoperability covers registration and Read** so far: the Eclipse Leshan client
+  registers and answers a server-initiated Read; real devices and the reverse
+  direction are still open (`ROADMAP.md`).
 - **No bootstrap interface.** A device must be provisioned with the server URI.
 - **Certificate-only DTLS.** gnety's transport has no pre-shared-key mode; see
   `DEPLOYMENT.md`.
