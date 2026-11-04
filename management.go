@@ -212,6 +212,11 @@ func (s *Server) operationContext(ctx context.Context, op Operation) (context.Co
 func (s *Server) do(ctx context.Context, reg Registration, req gcoap.ClientRequest, op Operation) (gcoap.ClientResponse, error) {
 	opCtx, cancel := s.operationContext(ctx, op)
 	defer cancel()
+	// The session path applies the same body limit the dialed client would; the
+	// library default (1 MiB) applies when the config leaves it zero.
+	if limit := s.cfg.DownlinkMaxRequestSize; limit > 0 && len(req.Payload) > limit {
+		return gcoap.ClientResponse{}, fmt.Errorf("%w: %d of %d bytes", gcoap.ErrRequestTooLarge, len(req.Payload), limit)
+	}
 	if s.cfg.DownlinkDialer == nil && reg.Peer.Addr != "" {
 		resp, err := s.coap.DoTo(opCtx, reg.Peer.Addr, req)
 		switch {

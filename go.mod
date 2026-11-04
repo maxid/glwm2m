@@ -3,7 +3,7 @@ module github.com/maxid/glwm2m
 go 1.27
 
 require (
-	github.com/maxid/gcoap v0.0.0-20261104130418-c23575961b84
+	github.com/maxid/gcoap v0.0.0-20261104133055-c3d8a75ea893
 	github.com/maxid/gnety v0.0.0-20261101095123-3eff0a20f62c
 )
 
