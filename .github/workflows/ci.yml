@@ -23,3 +23,33 @@ jobs:
         run: go test ./...
       - name: Vet
         run: go vet ./...
+
+  # The server keeps a registration table, an object store and per-registration
+  # downlink clients, and the expiry sweep runs on its own goroutine: the race
+  # detector is where a lifecycle bug shows up first. Ubuntu only — one platform
+  # runs the detector meaningfully, and three would triple the slowest job.
+  race:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+      - name: Test with the race detector
+        run: go test -race ./...
+
+  # Two short fuzz runs over what a device controls: a TLV write body (codec plus
+  # the object write path) and the registration request fields. Ten seconds each
+  # catches the cheap crashes without turning CI into a fuzzing farm; a longer run
+  # is a local or nightly job.
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+      - name: Fuzz the TLV write path
+        run: go test -run '^$' -fuzz FuzzDecodeTLV -fuzztime 10s .
+      - name: Fuzz registration requests
+        run: go test -run '^$' -fuzz FuzzDecodeRegistration -fuzztime 10s .
