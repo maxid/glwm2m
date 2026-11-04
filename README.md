@@ -174,16 +174,23 @@ _ = srv.Start(context.Background())
 
 ## Runnable examples
 
-[`examples/registration-demo`](examples/registration-demo/main.go) starts a
-server on an ephemeral loopback port, registers one simulated device over CoAP
-and reads a resource back through the server API. glwm2m has no client type, so
-the device side uses gcoap, the same library the server is built on; the
-registration is the real `POST /rd?ep=...&lt=...&b=...&lwm2m=...` request:
+Two programs under [`examples/`](examples/README.md) run without an external
+device. [`registration-demo`](examples/registration-demo/main.go) registers one
+simulated device over CoAP and reads its resource back through the server API;
+[`observe-telemetry`](examples/observe-telemetry/main.go) runs the whole circle —
+a server-initiated Read, an Observe and a device report that arrives as a
+notification. glwm2m has no client type, so the device side uses gcoap, the same
+library the server is built on; the registration is the real
+`POST /rd?ep=...&lt=...&b=...&lwm2m=...` request:
 
 ```sh
 go run ./examples/registration-demo
-go run ./examples/registration-demo -addr 127.0.0.1:5683 -endpoint demo-device
+go run ./examples/observe-telemetry
 ```
+
+[`examples/README.md`](examples/README.md) explains what each one answers, how to
+run it and what it prints; `-serve` turns either into a server an external LwM2M
+client can register with.
 
 ## Versioning
 

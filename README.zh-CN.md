@@ -154,15 +154,21 @@ _ = srv.Start(context.Background())
 
 ## 可运行示例
 
-[`examples/registration-demo`](examples/registration-demo/main.go) 在回环地址的临时端口上启动服务端，
-经 CoAP 注册一个模拟设备，并通过服务端 API 读回一个资源。glwm2m 不提供客户端类型，
+[`examples/`](examples/README.zh-CN.md) 下有两个示例，都不需要外部设备：
+[`registration-demo`](examples/registration-demo/main.go) 经 CoAP 注册一个模拟设备，并通过
+服务端 API 读回它的资源；[`observe-telemetry`](examples/observe-telemetry/main.go) 跑完整的一圈
+—— 服务端发起的 Read、一次 Observe，以及设备上报以通知形式到达。glwm2m 不提供客户端类型，
 因此设备侧使用构建服务端的同一个库 gcoap；注册请求就是设备真实发送的
 `POST /rd?ep=...&lt=...&b=...&lwm2m=...`：
 
 ```sh
 go run ./examples/registration-demo
-go run ./examples/registration-demo -addr 127.0.0.1:5683 -endpoint demo-device
+go run ./examples/observe-telemetry
 ```
+
+每个示例回答什么问题、怎么跑、应该看到什么，见
+[`examples/README.md`](examples/README.zh-CN.md)；加 `-serve` 可以把任一示例变成一个外部
+LwM2M 客户端可以注册的服务端。
 
 ## 版本管理
 
