@@ -291,6 +291,13 @@ func (s *Server) Execute(ctx context.Context, op Operation) error {
 	return err
 }
 
+// observationHandle is what both downlink transports return for an observation: a
+// client dialed separately, or the session the registration arrived on.
+type observationHandle interface {
+	Cancel(context.Context) error
+	Done() <-chan struct{}
+}
+
 // DownlinkObservation is one Observe relation started by the server.
 type DownlinkObservation struct {
 	srv   *Server
@@ -299,7 +306,7 @@ type DownlinkObservation struct {
 	once  sync.Once
 
 	mu     sync.Mutex
-	obs    *gcoap.Observation
+	obs    observationHandle
 	cancel context.CancelFunc
 }
 
@@ -357,6 +364,36 @@ func (s *Server) removeObservation(o *DownlinkObservation) {
 	s.dl.mu.Unlock()
 }
 
+// startObservation registers the observation over the session the registration
+// arrived on when there is one — a real LwM2M client only answers requests from its
+// server address — and falls back to a dialed client otherwise.
+func (s *Server) startObservation(ctx context.Context, reg Registration, op Operation, handler func(Value)) (gcoap.ClientResponse, observationHandle, error) {
+	req := gcoap.ClientRequest{Code: coap.CodeGET, Path: op.Path.String()}
+	notify := func(resp gcoap.ClientResponse) {
+		handler(Value{ContentFormat: contentFormatOf(resp.Options), Payload: append([]byte(nil), resp.Payload...)})
+	}
+	if s.cfg.DownlinkDialer == nil && reg.Peer.Addr != "" {
+		obs, initial, err := s.coap.ObserveTo(ctx, reg.Peer.Addr, req, notify)
+		switch {
+		case err == nil:
+			return initial, obs, nil
+		case errors.Is(err, gcoap.ErrNoSession):
+			// No live session: dial the registration's address instead.
+		default:
+			return gcoap.ClientResponse{}, nil, err
+		}
+	}
+	cli, err := s.downlinkClient(ctx, reg)
+	if err != nil {
+		return gcoap.ClientResponse{}, nil, err
+	}
+	obs, initial, err := cli.Observe(ctx, req, notify)
+	if err != nil {
+		return gcoap.ClientResponse{}, nil, err
+	}
+	return initial, obs, nil
+}
+
 // Observe starts a LwM2M Observe against a registered client. It returns the
 // registration value and the observation; later values go to handler.
 func (s *Server) Observe(ctx context.Context, op Operation, handler func(Value)) (*DownlinkObservation, Value, error) {
@@ -367,23 +404,17 @@ func (s *Server) Observe(ctx context.Context, op Operation, handler func(Value))
 	if err != nil {
 		return nil, Value{}, err
 	}
-	cli, err := s.downlinkClient(ctx, reg)
-	if err != nil {
-		return nil, Value{}, err
-	}
 	// The observation outlives this call: it is detached from the caller's
 	// deadline, and the registration exchange gets its own timer below.
 	obsCtx, obsCancel := context.WithCancel(context.WithoutCancel(ctx))
 	type started struct {
-		obs     *gcoap.Observation
+		obs     observationHandle
 		initial gcoap.ClientResponse
 		err     error
 	}
 	startedCh := make(chan started, 1)
 	go func() {
-		obs, initial, err := cli.Observe(obsCtx, gcoap.ClientRequest{Code: coap.CodeGET, Path: op.Path.String()}, func(resp gcoap.ClientResponse) {
-			handler(Value{ContentFormat: contentFormatOf(resp.Options), Payload: append([]byte(nil), resp.Payload...)})
-		})
+		initial, obs, err := s.startObservation(obsCtx, reg, op, handler)
 		startedCh <- started{obs: obs, initial: initial, err: err}
 	}()
 	timeout := op.Timeout
