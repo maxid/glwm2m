@@ -16,3 +16,6 @@
 *.a
 *.prof
 coverage.*
+
+# interoperability test inputs (downloaded by the integration job, never committed)
+interop/leshan-client-demo.jar
