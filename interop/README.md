@@ -33,17 +33,14 @@ JDK 17, which the GitHub ubuntu image already has.
   with this server: the request is parsed into the same `Registration` this
   library's own client produces, with the endpoint, lifetime, version, peer and
   object links intact.
-- **A known gap, on purpose.** A LwM2M client only accepts requests from the
-  address it registered with — the address of *its* server — and this engine sends
-  server-initiated operations from a separate socket. Leshan answers them with
-  `5.00 "unknown server"`, and the test records that instead of hiding it. It
-  fails when the gap is fixed, which is the signal to update `ROADMAP.md`,
-  `docs/ARCHITECTURE.md` and the test together.
-
-The missing piece is transport, not LwM2M: the downlink has to be sent over the
-socket the registration arrived on (and its responses correlated there), which
-needs an outbound-request API on `gcoap.Server`. That is the `ROADMAP.md` item
-"downlink over the listener socket".
+- **Read over the server's own socket.** `Server.Read` sends the request over the
+  session the registration arrived on (`gcoap.Server.DoTo`), so Leshan accepts it
+  and answers the Device object's manufacturer — a request from any other source is
+  rejected as "unknown server".
+- **A remaining gap, on purpose.** `Observe` still dials a separate client, so
+  Leshan answers it `5.00 "unknown server"`; the test records that instead of
+  hiding it and fails when the gap is fixed, which is the signal to update
+  `ROADMAP.md`, `docs/ARCHITECTURE.md` and the test together.
 
 ## Not covered
 

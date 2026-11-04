@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/maxid/gcoap"
 	"github.com/maxid/glwm2m"
 	"github.com/maxid/gnety/codec/coap"
 )
@@ -154,14 +155,10 @@ func TestLeshanClientRegistration(t *testing.T) {
 		registration.Endpoint, registration.ID, registration.Version, registration.ObjectLinks)
 }
 
-// TestLeshanDownlinkKnownGap records a real limitation instead of hiding it: a
-// LwM2M client answers only its registered server, identified by the source
-// address of the request, and this engine sends downlinks from a separate socket.
-// Leshan therefore answers "unknown server" with 5.00.
-//
-// This test fails when the limitation is fixed, which is the signal to update the
-// gap in ROADMAP.md, docs/ARCHITECTURE.md and this test together.
-func TestLeshanDownlinkKnownGap(t *testing.T) {
+// TestLeshanDownlinkRead is the direction the transport fix was for: a request
+// from the server must leave from the server's own socket, because Leshan (like
+// every LwM2M client) only answers the address it registered with.
+func TestLeshanDownlinkRead(t *testing.T) {
 	jar, java := leshanClientJar(t)
 
 	f := startServer(t)
@@ -169,19 +166,52 @@ func TestLeshanDownlinkKnownGap(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	instance, resource := uint16(0), uint16(0)
+	instance, manufacturer := uint16(0), uint16(0)
 	value, err := f.srv.Read(ctx, glwm2m.Operation{
 		RegistrationID: registration.ID,
-		Path:           glwm2m.Path{ObjectID: 3, InstanceID: &instance, ResourceID: &resource},
+		Path:           glwm2m.Path{ObjectID: 3, InstanceID: &instance, ResourceID: &manufacturer},
 	})
+	if err != nil {
+		t.Fatalf("Read /3/0/0 from Leshan: %v", err)
+	}
+	if len(value.Payload) == 0 {
+		t.Fatal("Read /3/0/0 returned an empty payload")
+	}
+	t.Logf("Leshan /3/0/0 = %q", value.Payload)
+}
+
+// TestLeshanObserveKnownGap records the part that is still open: a downlink
+// Observe still goes through the separately dialed client, so Leshan rejects it
+// with 5.00 "unknown server". The test fails when Observe moves onto the session,
+// which is the signal to update ROADMAP.md, docs/ARCHITECTURE.md and the interop
+// README together.
+func TestLeshanObserveKnownGap(t *testing.T) {
+	jar, java := leshanClientJar(t)
+
+	f := startServer(t)
+	registration, _ := f.register(t, jar, java)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	instance, resource := uint16(0), uint16(13)
+	observation, initial, err := f.srv.Observe(ctx, glwm2m.Operation{
+		RegistrationID: registration.ID,
+		Path:           glwm2m.Path{ObjectID: 3, InstanceID: &instance, ResourceID: &resource},
+	}, func(glwm2m.Value) {})
 
 	var rejected *glwm2m.OperationError
 	switch {
 	case err == nil:
-		t.Fatalf("the downlink reached Leshan (/3/0/0 = %q): the known gap in ROADMAP.md is fixed; update ROADMAP.md, docs/ARCHITECTURE.md and this test", value.Payload)
-	case !errors.As(err, &rejected) || rejected.Code != coap.CodeInternalServerError:
-		t.Fatalf("Read /3/0/0 = %v, want Leshan's 5.00 rejection", err)
+		if observation != nil {
+			_ = observation.Cancel(ctx)
+		}
+		t.Fatalf("Observe /3/0/13 reached Leshan (initial %q): the known gap in ROADMAP.md is fixed; update ROADMAP.md, docs/ARCHITECTURE.md and this test", initial.Payload)
+	case errors.As(err, &rejected) && rejected.Code == coap.CodeInternalServerError:
+		t.Logf("known gap reproduced: Observe answered %s because it uses a separately dialed client", rejected.Code)
+	case errors.Is(err, gcoap.ErrObserveRejected):
+		// gcoap reports a rejected registration before glwm2m can wrap it.
+		t.Logf("known gap reproduced: Observe was rejected with %v because it uses a separately dialed client", err)
+	default:
+		t.Fatalf("Observe /3/0/13 = %v, want Leshan's 5.00 rejection", err)
 	}
-	t.Logf("known gap reproduced: Leshan answered %s for %s (a LwM2M client only accepts requests from its server address, and the downlink uses a separate socket)",
-		rejected.Code, rejected.RegistrationID)
 }

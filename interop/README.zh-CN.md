@@ -28,14 +28,12 @@ go test -tags=integration ./...
 - **注册。** Leshan 的 demo 客户端（LwM2M 1.1/1.2、Californium）注册到本服务端：请求被解析成
   与库自带客户端完全相同的 `Registration`，endpoint、lifetime、version、peer 与对象清单都
   完好。
-- **一个已知缺口，故意的。** LwM2M 客户端只接受来自它注册的那个地址（即它的服务端）的请求，
-  而本引擎的服务端发起操作是从另一个 socket 发出的。Leshan 会回 `5.00 "unknown server"`，
-  测试把这个事实记录下来而不是掩盖它；缺口被修好时该测试会失败，提示同时更新 `ROADMAP.md`、
-  `docs/ARCHITECTURE.md` 与测试本身。
-
-缺的是传输层，不是 LwM2M 语义：下行必须走注册到达的那个 socket（并在那里关联响应），这需要
-`gcoap.Server` 提供「向已有会话发请求」的能力，也就是 `ROADMAP.md` 里的
-「下行走监听器自己的 socket」那一项。
+- **Read 走服务端自己的 socket。** `Server.Read` 把请求发在注册到达的那个会话上
+  （`gcoap.Server.DoTo`），Leshan 因此接受并答出 Device 对象的厂商 —— 来自其它来源的请求会被
+  当作 "unknown server" 拒绝。
+- **一个仍然存在的缺口，故意的。** `Observe` 仍会另拨客户端，Leshan 以 `5.00 "unknown server"`
+  拒绝；测试把这个事实记录下来而不是掩盖它，缺口修好时该测试会失败，提示同时更新
+  `ROADMAP.md`、`docs/ARCHITECTURE.md` 与测试本身。
 
 ## 不覆盖什么
 
