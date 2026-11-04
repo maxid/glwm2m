@@ -32,9 +32,11 @@ type Path struct {
 	ResourceID *uint16
 }
 
-// String renders the path as the CoAP URI used on the wire.
+// String renders the path as the CoAP URI a LwM2M client serves: /{object},
+// /{object}/{instance} or /{object}/{instance}/{resource}. It is the path a
+// downlink request carries, not the server's own "/objects/..." endpoints.
 func (p Path) String() string {
-	out := "/objects/" + strconv.Itoa(int(p.ObjectID))
+	out := "/" + strconv.Itoa(int(p.ObjectID))
 	if p.InstanceID != nil {
 		out += "/" + strconv.Itoa(int(*p.InstanceID))
 	}

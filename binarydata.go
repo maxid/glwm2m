@@ -136,7 +136,7 @@ func (s *Server) CreateBinaryDataInstance(ctx context.Context, registrationID st
 	if err != nil {
 		return 0, err
 	}
-	path := "/objects/" + strconv.Itoa(int(BinaryAppDataObjectID))
+	path := Path{ObjectID: BinaryAppDataObjectID}.String()
 	resp, err := s.do(ctx, reg, gcoap.ClientRequest{
 		Code:    coap.CodePUT,
 		Path:    path,
@@ -158,7 +158,7 @@ func (s *Server) DeleteBinaryDataInstance(ctx context.Context, registrationID st
 	if err != nil {
 		return err
 	}
-	path := "/objects/" + strconv.Itoa(int(BinaryAppDataObjectID)) + "/" + strconv.Itoa(int(instanceID))
+	path := Path{ObjectID: BinaryAppDataObjectID, InstanceID: &instanceID}.String()
 	_, err = s.do(ctx, reg, gcoap.ClientRequest{Code: coap.CodeDELETE, Path: path}, Operation{RegistrationID: registrationID})
 	return err
 }

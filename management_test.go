@@ -35,7 +35,7 @@ func startRegisteredDevice(t *testing.T, srv *Server, resources map[string]strin
 
 func TestDownlinkReadWriteExecute(t *testing.T) {
 	srv := startServerWith(t, Config{})
-	path := "/objects/3303/0/5700"
+	path := "/3303/0/5700"
 	device, id := startRegisteredDevice(t, srv, map[string]string{path: "21.5"}, "dev-1")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -72,7 +72,7 @@ func TestDownlinkReadWriteExecute(t *testing.T) {
 
 func TestDownlinkObserve(t *testing.T) {
 	srv := startServerWith(t, Config{})
-	path := "/objects/3303/0/5700"
+	path := "/3303/0/5700"
 	device, id := startRegisteredDevice(t, srv, map[string]string{path: "21.5"}, "dev-obs")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -140,7 +140,7 @@ func TestDownlinkDefaultDTLS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	device.Handle(coap.CodeGET, "/objects/3303/0/5700", func(context.Context, gcoap.Request) gcoap.Response {
+	device.Handle(coap.CodeGET, "/3303/0/5700", func(context.Context, gcoap.Request) gcoap.Response {
 		return gcoap.Response{Code: coap.CodeContent, Payload: []byte("dtls-21.5")}
 	})
 	if err := device.Start(context.Background()); err != nil {

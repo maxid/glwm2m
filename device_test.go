@@ -260,8 +260,10 @@ func (d *fakeDevice) handle(req coap.Message, from *net.UDPAddr) {
 			return
 		}
 	}
-	if len(req.URIPath()) > 1 && req.URIPath()[0] == "objects" && req.URIPath()[1] == "19" {
-		d.handleBinary(req, from, req.URIPath()[2:])
+	// A LwM2M client serves /{object}[/{instance}[/{resource}]]; the library's
+	// downlink uses exactly that form.
+	if len(req.URIPath()) > 0 && req.URIPath()[0] == "19" {
+		d.handleBinary(req, from, req.URIPath()[1:])
 		return
 	}
 
@@ -275,14 +277,14 @@ func (d *fakeDevice) handle(req coap.Message, from *net.UDPAddr) {
 		d.respond(req, from, coap.CodeChanged, nil)
 	case req.Code == coap.CodeDELETE && len(req.URIPath()) > 0 && req.URIPath()[0] == "rd":
 		d.respond(req, from, coap.CodeDeleted, nil)
-	case req.Code == coap.CodeGET && len(req.URIPath()) > 0 && req.URIPath()[0] == "objects":
+	case req.Code == coap.CodeGET && isObjectPath(req.URIPath()):
 		d.handleRead(req, from, path)
-	case req.Code == coap.CodePUT && len(req.URIPath()) > 0 && req.URIPath()[0] == "objects":
+	case req.Code == coap.CodePUT && isObjectPath(req.URIPath()):
 		d.mu.Lock()
 		d.resources[path] = string(req.Payload)
 		d.mu.Unlock()
 		d.respond(req, from, coap.CodeChanged, nil)
-	case req.Code == coap.CodePOST && len(req.URIPath()) > 0 && req.URIPath()[0] == "objects":
+	case req.Code == coap.CodePOST && isObjectPath(req.URIPath()):
 		d.mu.Lock()
 		d.executed = append(d.executed, path)
 		d.mu.Unlock()
@@ -290,6 +292,16 @@ func (d *fakeDevice) handle(req coap.Message, from *net.UDPAddr) {
 	default:
 		d.respond(req, from, coap.CodeNotFound, nil)
 	}
+}
+
+// isObjectPath reports whether the URI starts with an object id, the first
+// segment of the path a LwM2M client serves.
+func isObjectPath(segments []string) bool {
+	if len(segments) == 0 {
+		return false
+	}
+	_, err := strconv.Atoi(segments[0])
+	return err == nil
 }
 
 // assembleBlock1 adds one block to an upload. assembled is non-nil on the final
