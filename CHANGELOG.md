@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+- A downlink body above one CoAP block is now uploaded with Block1 over the
+  registration's session, so a real client accepts a large Write too; the dialed
+  client is used only when the registration has no live session.
+
 - `Observe` now registers over the session the registration arrived on
   (`gcoap.Server.ObserveTo`), like Read/Write/Execute: a real LwM2M client accepts
   the observation and its notifications arrive. A registration without a live

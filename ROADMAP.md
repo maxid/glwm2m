@@ -22,7 +22,7 @@
 - [x] Observe over the listener socket: `Observe` registers on the registration's
       session (`gcoap.Server.ObserveTo`), so a real client accepts it (`interop/`
       proves it with Leshan)
-- [ ] Block1 from the server side, for a downlink body above one block
+- [x] Block1 from the server side, for a downlink body above one block
 - [ ] Interop with real devices and vendor simulators, both directions
 - [ ] Pluggable registration storage and per-peer downlink quotas
 - [ ] v1.0 API stabilization

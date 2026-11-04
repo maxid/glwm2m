@@ -32,11 +32,9 @@ whatever `DownlinkDialer` produces — for any server-initiated operation.
 
 Server-initiated Read, Write and Execute are sent over the session the registration
 arrived on, so they leave from the server's own socket — the address a real client
-answers, and `Observe` registers over the same session. One path still dials a
-separate client: a request body above one CoAP block (Block1 from the server side is
-not implemented), which is a `ROADMAP.md` item. If your fleet needs it today, keep the
-device reachable from an address the dialer can use (or drive values through the
-engine's local object tree). A device
+answers, `Observe` registers over the same session, and a body above one CoAP block
+is uploaded with Block1. Only a registration without a live session (another
+transport, a roamed peer) falls back to the dialer. A device
 behind NAT that registers outward but cannot be called back will register, update
 and deregister fine, and the downlink will time out.
 

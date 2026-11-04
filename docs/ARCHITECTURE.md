@@ -144,8 +144,6 @@ come from gcoap's defaults; `glwm2m.Config` does not expose them today.
 
 ## Known gaps
 
-- **Block1 from the server side does not exist.** A downlink body above one block
-  falls back to the dialed client, so it works only with devices that accept it.
 - **Interoperability covers registration, Read and Observe**: the Eclipse Leshan client
   registers, answers a server-initiated Read and accepts an Observe over its session;
   real devices and the reverse direction are still open (`ROADMAP.md`).

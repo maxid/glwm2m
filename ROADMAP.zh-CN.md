@@ -19,7 +19,7 @@
       （`gcoap.Server.DoTo`），真实客户端会接受（`interop/` 用 Leshan 证明）
 - [x] Observe 走监听器自己的 socket：`Observe` 注册在注册所在会话上
       （`gcoap.Server.ObserveTo`），真实客户端会接受（`interop/` 用 Leshan 证明）
-- [ ] 服务端侧 Block1，用于超过一个块的下行请求体
+- [x] 服务端侧 Block1，用于超过一个块的下行请求体
 - [ ] 与真机/厂商模拟器的互操作测试（双向）
 - [ ] 可插拔注册存储与 per-peer 下行配额
 - [ ] v1.0 API 稳定化

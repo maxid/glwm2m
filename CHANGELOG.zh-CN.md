@@ -6,6 +6,9 @@
 
 ## [Unreleased]
 
+- 超过一个 CoAP 块的下行请求体现在通过注册所在会话用 Block1 上传，真实客户端也会接受大
+  写入；只有注册没有活会话时才使用拨号客户端。
+
 - `Observe` 现在与 Read/Write/Execute 一样，注册在注册到达的那个会话上
   （`gcoap.Server.ObserveTo`）：真实 LwM2M 客户端会接受观察，通知也能到达。注册没有活会话时
   仍回退到拨号客户端。`interop/` 对 Leshan 断言了整条路径（注册、Read、Observe）。
