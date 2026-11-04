@@ -45,7 +45,11 @@ A LwM2M server engine in Go.
   timeout and a cached client per registration. A 4.xx answer is returned as a
   typed `*OperationError`, not as a transport failure
 - Downlink transports: UDP by default; DTLS through `Config.DownlinkTLS`; a
-  `Config.DownlinkDialer` replaces the dialer entirely (proxy, PSK, tests)
+  `Config.DownlinkDialer` replaces the dialer entirely (proxy, PSK, tests). A
+  downlink leaves from its own socket, and a compliant LwM2M client only answers
+  its registered server address, so server-initiated operations do not reach a
+  real client yet — `interop/` reproduces that with Leshan and `ROADMAP.md`
+  tracks the transport work.
 - Object model: `ObjectDef`/`ResourceDef` declare operations, multiplicity and
   value types; `NewObjectRegistry` validates them. A configured registry rejects
   unknown objects/resources (4.04), non-writable writes and non-executable

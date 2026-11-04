@@ -14,6 +14,11 @@
 - [x] Object 19 Binary App Data Container: standard definition, block-wise
       downlink create/read/write/delete and local object-tree support
 - [x] Simulated-device end-to-end tests (registration, downlink, observe)
-- [ ] Interop tests with real devices/simulators
+- [x] Interoperability with an independent implementation: the Eclipse Leshan
+      client demo registers and is parsed like our own client (`interop/`)
+- [ ] Downlink over the listener socket: a real client only accepts requests
+      from its registered server address, so server-initiated
+      Read/Write/Execute/Observe do not reach it yet (`interop/` records this)
+- [ ] Interop with real devices and vendor simulators, both directions
 - [ ] Pluggable registration storage and per-peer downlink quotas
 - [ ] v1.0 API stabilization

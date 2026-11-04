@@ -4,6 +4,16 @@
 
 ## [Unreleased]
 
+- `interop/`, an interoperability module against an independent LwM2M
+  implementation: the Eclipse Leshan client demo (Java/Californium) registers with
+  this server and is parsed like our own client, links and lifetime included. The
+  module also records a real limitation instead of hiding it — a client only answers
+  its registered server address, and a downlink leaves from its own socket, so
+  Leshan rejects server-initiated operations with `5.00 "unknown server"`.
+- The CI workflow gains an `integration` job that fetches the Leshan client jar and
+  runs `go test -tags=integration ./...`; the tests skip when a JRE or the jar is
+  missing.
+
 - **Breaking:** a server-initiated operation now addresses the device with the
   LwM2M client path `/{object}[/{instance}[/{resource}]]`. It used to send the
   server's own `/objects/...` form, which a real LwM2M client answers with 4.04 —

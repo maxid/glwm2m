@@ -13,6 +13,10 @@
 - [x] 对象注册表（操作/多实例/类型）、按实例存储的多资源与原子 TLV 写入
 - [x] Object 19 Binary App Data Container：标准定义、分块下行 create/read/write/delete 与本地对象树支持
 - [x] 模拟设备端到端测试（注册、下行、Observe）
-- [ ] 与真机/厂商模拟器的互操作测试
+- [x] 与独立实现的互操作：Eclipse Leshan 客户端 demo 注册后，解析结果与库自带客户端一致
+      （`interop/`）
+- [ ] 下行走监听器自己的 socket：真实客户端只接受注册时那个服务端地址的请求，所以服务端发起的
+      Read/Write/Execute/Observe 目前到不了它（`interop/` 记录了这一缺口）
+- [ ] 与真机/厂商模拟器的互操作测试（双向）
 - [ ] 可插拔注册存储与 per-peer 下行配额
 - [ ] v1.0 API 稳定化
