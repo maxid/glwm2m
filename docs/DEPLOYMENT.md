@@ -32,12 +32,11 @@ whatever `DownlinkDialer` produces — for any server-initiated operation.
 
 Server-initiated Read, Write and Execute are sent over the session the registration
 arrived on, so they leave from the server's own socket — the address a real client
-answers. Two paths still dial a separate client: `Observe`, and a request body above
-one CoAP block (Block1 from the server side is not implemented). Both are
-`ROADMAP.md` items, and `interop/` records the Observe one against Leshan. If your
-fleet needs either today, keep the device's object tree reachable from the server
-address (a proxy that preserves it) or drive values through the engine's local
-object tree and notifications instead. A device
+answers, and `Observe` registers over the same session. One path still dials a
+separate client: a request body above one CoAP block (Block1 from the server side is
+not implemented), which is a `ROADMAP.md` item. If your fleet needs it today, keep the
+device reachable from an address the dialer can use (or drive values through the
+engine's local object tree). A device
 behind NAT that registers outward but cannot be called back will register, update
 and deregister fine, and the downlink will time out.
 

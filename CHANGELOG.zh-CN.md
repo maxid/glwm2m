@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+- `Observe` 现在与 Read/Write/Execute 一样，注册在注册到达的那个会话上
+  （`gcoap.Server.ObserveTo`）：真实 LwM2M 客户端会接受观察，通知也能到达。注册没有活会话时
+  仍回退到拨号客户端。`interop/` 对 Leshan 断言了整条路径（注册、Read、Observe）。
+
 - 服务端发起的 Read、Write、Execute 现在走注册到达的那个会话（`gcoap.Server.DoTo`），
   请求因此从服务端自己的 socket 发出 —— 合规 LwM2M 客户端只答复这个来源。注册没有活会话、
   或请求体需要 Block1 时回退到拨号客户端。`Observe` 仍用拨号客户端：`interop/` 记录了 Leshan

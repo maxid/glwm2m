@@ -17,8 +17,8 @@
       （`interop/`）
 - [x] 下行走监听器自己的 socket：Read/Write/Execute 走注册所在会话
       （`gcoap.Server.DoTo`），真实客户端会接受（`interop/` 用 Leshan 证明）
-- [ ] Observe 走监听器自己的 socket：`Observe` 仍会另拨客户端，真实客户端会拒绝
-      （`interop/` 记录了这条）
+- [x] Observe 走监听器自己的 socket：`Observe` 注册在注册所在会话上
+      （`gcoap.Server.ObserveTo`），真实客户端会接受（`interop/` 用 Leshan 证明）
 - [ ] 服务端侧 Block1，用于超过一个块的下行请求体
 - [ ] 与真机/厂商模拟器的互操作测试（双向）
 - [ ] 可插拔注册存储与 per-peer 下行配额

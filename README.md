@@ -48,8 +48,8 @@ A LwM2M server engine in Go.
   `Config.DownlinkDialer` replaces the dialer entirely (proxy, PSK, tests). A
   downlink is sent over the session the registration arrived on, so it leaves from
   the server's own socket — the address a real client answers — and falls back to
-  the dialer when there is no session or the body needs Block1. Observe still uses
-  the dialer, which `interop/` records as the remaining gap.
+  the dialer when there is no session or the body needs Block1. `Observe` registers
+  over the same session, so notifications from a real client arrive too.
 - Object model: `ObjectDef`/`ResourceDef` declare operations, multiplicity and
   value types; `NewObjectRegistry` validates them. A configured registry rejects
   unknown objects/resources (4.04), non-writable writes and non-executable

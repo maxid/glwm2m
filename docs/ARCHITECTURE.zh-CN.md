@@ -125,13 +125,10 @@ CoAP 层的限额 —— 观察者、块大小、去重、交换时序 —— �
 
 ## 已知差距
 
-- **Observe 仍走独立拨号。** Read、Write、Execute 已走注册所在会话
-  （`gcoap.Server.DoTo`），但 `Observe` 仍用拨号出来的 `gcoap.Client`，真实客户端会拒绝
-  （`interop/` 用 Leshan 复现）。把它也搬到会话上是 `ROADMAP.md` 的条目。
 - **服务端侧没有 Block1。** 下行请求体超过一个块时回退到拨号客户端，因此只对接受这种来源的
   设备可用。
-- **目前互操作覆盖注册与 Read**：Eclipse Leshan 客户端能注册，也能被服务端 Read；真机与反
-  方向仍开放（`ROADMAP.md`）。
+- **目前互操作覆盖注册、Read 与 Observe**：Eclipse Leshan 客户端能注册、能被服务端 Read，
+  也能在它自己的会话上接受 Observe；真机与反方向仍开放（`ROADMAP.md`）。
 - **没有 bootstrap 接口。** 设备必须被预置服务端 URI。
 - **只支持证书 DTLS。** gnety 的传输没有预共享密钥模式，见 `DEPLOYMENT.md`。
 - **注册只在内存里。** 重启即丢，还没有可插拔存储（ROADMAP）。

@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+- `Observe` now registers over the session the registration arrived on
+  (`gcoap.Server.ObserveTo`), like Read/Write/Execute: a real LwM2M client accepts
+  the observation and its notifications arrive. A registration without a live
+  session still falls back to the dialed client. `interop/` asserts the whole path
+  against Leshan (registration, Read, Observe).
+
 - Server-initiated Read, Write and Execute now go over the session the registration
   arrived on (`gcoap.Server.DoTo`), so the request leaves from the server's own
   socket — the only source a compliant LwM2M client answers. A registration without
