@@ -4,6 +4,26 @@
 
 ## [Unreleased]
 
+- Two runnable examples with a bilingual `examples/README`: `registration-demo`
+  (the registration lifecycle, the parsed registration, a local-object answer and
+  a `-serve` mode an external LwM2M client can register with) and
+  `observe-telemetry` (a server-initiated Read and Observe, then a device report
+  that arrives as a notification). Both print `[n/N]` steps and `[done]`, stop on
+  Ctrl-C with exit code 0, and list copyable commands in `-h`.
+- `docs/ARCHITECTURE.md` and `docs/DEPLOYMENT.md` (each with a Chinese
+  counterpart): the registration and observation state machines, the object tree
+  and its TLV endpoints, the downlink and its client cache, the limits table, and
+  the deployment decisions a fleet forces — bootstrap, the certificate-only DTLS
+  trade-off, the in-memory registration store and the restart behaviour.
+- `fuzz_test.go`: `FuzzDecodeTLV` drives the TLV codec and the write path that
+  turns entries into object values (no panic, canonical re-encode, no value larger
+  than the input, the store cannot grow faster than the body);
+  `FuzzDecodeRegistration` drives every registration field and pins the contract
+  around it (a defined answer, the endpoint kept exactly, the lifetime cap, no
+  state left by a rejection).
+- The CI workflow gains `race` and a short run of both fuzz targets; the `test`
+  matrix stays as it was.
+
 - Object 19 (Binary App Data Container): `BinaryAppDataObject()` is the standard
   registry definition (Data Opaque/multiple R/W; Data Priority, Data Creation
   Time, Data Description, Data Format and App ID). Server-side helpers
