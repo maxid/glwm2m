@@ -203,13 +203,34 @@ func (s *Server) operationContext(ctx context.Context, op Operation) (context.Co
 }
 
 // do performs one operation against the device and rejects an error response.
+//
+// The request goes over the session the registration arrived on whenever there is
+// one, so it leaves from the server's own socket: a real LwM2M client only answers
+// requests from the address it registered with, and a client dialed separately
+// would be rejected. A registration without a live session (a different transport,
+// a roamed peer) or a body that would need Block1 falls back to the dialer.
 func (s *Server) do(ctx context.Context, reg Registration, req gcoap.ClientRequest, op Operation) (gcoap.ClientResponse, error) {
+	opCtx, cancel := s.operationContext(ctx, op)
+	defer cancel()
+	if s.cfg.DownlinkDialer == nil && reg.Peer.Addr != "" {
+		resp, err := s.coap.DoTo(opCtx, reg.Peer.Addr, req)
+		switch {
+		case err == nil:
+			if resp.Code.Class() != 2 {
+				return gcoap.ClientResponse{}, &OperationError{RegistrationID: reg.ID, Code: resp.Code}
+			}
+			return resp, nil
+		case errors.Is(err, gcoap.ErrNoSession), errors.Is(err, gcoap.ErrRequestTooLarge):
+			// No live session, or a body the session path cannot carry yet: use
+			// the dialer instead of failing the operation.
+		default:
+			return gcoap.ClientResponse{}, err
+		}
+	}
 	cli, err := s.downlinkClient(ctx, reg)
 	if err != nil {
 		return gcoap.ClientResponse{}, err
 	}
-	opCtx, cancel := s.operationContext(ctx, op)
-	defer cancel()
 	resp, err := cli.Do(opCtx, req)
 	if err != nil {
 		return gcoap.ClientResponse{}, err

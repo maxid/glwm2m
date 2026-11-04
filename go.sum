@@ -5,6 +5,8 @@ github.com/maxid/gcoap v0.0.0-20261029134013-827e0d51d62a h1:di0OX3eKMtILW36ihyv
 github.com/maxid/gcoap v0.0.0-20261029134013-827e0d51d62a/go.mod h1:rD00pUs3is41ekF2vcbo3SK7Oln85xDwL0IfLWPN+a8=
 github.com/maxid/gcoap v0.0.0-20261101093611-3d383559981a h1:L/nb+8XjwtaLHo8JsSV102aGWCHgE8miSUMB9ex1ftQ=
 github.com/maxid/gcoap v0.0.0-20261101093611-3d383559981a/go.mod h1:jB/Vw3FaDiMFlJ3YLFFh7A3zu4L91Kpv7dVLbV9dZ3I=
+github.com/maxid/gcoap v0.0.0-20261104124945-b63f83d6d4b1 h1:v/3DttymjJ2W7n8j45706wBN6qsv+Dr81e2TE18LPOc=
+github.com/maxid/gcoap v0.0.0-20261104124945-b63f83d6d4b1/go.mod h1:jB/Vw3FaDiMFlJ3YLFFh7A3zu4L91Kpv7dVLbV9dZ3I=
 github.com/maxid/gnety v0.0.0-20261030131557-4d99ac3c8ca6 h1:K0aLhn3k4QO8CsM/fOHLlcV73HDrsYhBdinTXPaEato=
 github.com/maxid/gnety v0.0.0-20261030131557-4d99ac3c8ca6/go.mod h1:uVjoynffjJX5EZV0eS8cpUJ8X2Nhzmnq0Ywqq0ia2es=
 github.com/maxid/gnety v0.0.0-20261101095123-3eff0a20f62c h1:sIQtfaFjZu9E1jVY8cZJe6e7VIrsFQcEN8hF2kGcXXg=
