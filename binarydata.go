@@ -204,11 +204,12 @@ func parseBinaryData(payload []byte) ([]BinaryData, error) {
 	return out, nil
 }
 
-// locationInstance reads the last numeric segment of a Create Location-Path.
+// locationInstance reads the last numeric segment of a Create Location-Path. A
+// peer that answers with URI-Path instead is tolerated, because some devices do.
 func locationInstance(resp gcoap.ClientResponse) (uint16, bool) {
 	last := ""
 	for _, option := range resp.Options {
-		if option.Number == coap.OptionURIPath {
+		if option.Number == coap.OptionLocationPath || option.Number == coap.OptionURIPath {
 			last = string(option.Value)
 		}
 	}

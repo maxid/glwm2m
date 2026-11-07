@@ -258,8 +258,8 @@ func (s *Server) handleRegister(_ context.Context, req gcoap.Request) gcoap.Resp
 	return gcoap.Response{
 		Code: coap.CodeCreated,
 		Options: []coap.Option{
-			{Number: coap.OptionURIPath, Value: []byte("rd")},
-			{Number: coap.OptionURIPath, Value: []byte(reg.ID)},
+			{Number: coap.OptionLocationPath, Value: []byte("rd")},
+			{Number: coap.OptionLocationPath, Value: []byte(reg.ID)},
 		},
 	}
 }

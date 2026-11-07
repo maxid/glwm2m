@@ -115,7 +115,7 @@ func TestRegistrationLifecycle(t *testing.T) {
 	}
 	var id string
 	for _, opt := range reg.Options {
-		if opt.Number == coap.OptionURIPath && string(opt.Value) != "rd" {
+		if opt.Number == coap.OptionLocationPath && string(opt.Value) != "rd" {
 			id = string(opt.Value)
 		}
 	}

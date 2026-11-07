@@ -230,7 +230,7 @@ Flags:
 func registrationID(resp gcoap.ClientResponse) string {
 	id := ""
 	for _, opt := range resp.Options {
-		if opt.Number != coap.OptionLocationPath && opt.Number != coap.OptionURIPath {
+		if opt.Number != coap.OptionLocationPath {
 			continue
 		}
 		if value := string(opt.Value); value != "rd" {

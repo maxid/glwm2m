@@ -69,7 +69,7 @@ func register(t *testing.T, cli *gcoap.Client, endpoint, lifetime, payload strin
 	}
 	id := ""
 	for _, option := range resp.Options {
-		if option.Number == coap.OptionURIPath && string(option.Value) != "rd" {
+		if option.Number == coap.OptionLocationPath && string(option.Value) != "rd" {
 			id = string(option.Value)
 		}
 	}

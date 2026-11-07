@@ -159,7 +159,7 @@ func (d *fakeDevice) register(ctx context.Context, serverAddr, endpoint string) 
 	}
 	var id string
 	for _, option := range resp.Options {
-		if option.Number == coap.OptionURIPath && string(option.Value) != "rd" {
+		if option.Number == coap.OptionLocationPath && string(option.Value) != "rd" {
 			id = string(option.Value)
 		}
 	}
@@ -270,8 +270,8 @@ func (d *fakeDevice) handle(req coap.Message, from *net.UDPAddr) {
 	switch {
 	case req.Code == coap.CodePOST && path == "/rd":
 		d.respond(req, from, coap.CodeCreated, nil,
-			coap.Option{Number: coap.OptionURIPath, Value: []byte("rd")},
-			coap.Option{Number: coap.OptionURIPath, Value: []byte("device")},
+			coap.Option{Number: coap.OptionLocationPath, Value: []byte("rd")},
+			coap.Option{Number: coap.OptionLocationPath, Value: []byte("device")},
 		)
 	case req.Code == coap.CodePOST && len(req.URIPath()) > 0 && req.URIPath()[0] == "rd":
 		d.respond(req, from, coap.CodeChanged, nil)
@@ -369,8 +369,8 @@ func (d *fakeDevice) handleBinary(req coap.Message, from *net.UDPAddr, rest []st
 			return
 		}
 		d.respond(req, from, coap.CodeCreated, nil,
-			coap.Option{Number: coap.OptionURIPath, Value: []byte("19")},
-			coap.Option{Number: coap.OptionURIPath, Value: []byte(strconv.Itoa(int(iid)))},
+			coap.Option{Number: coap.OptionLocationPath, Value: []byte("19")},
+			coap.Option{Number: coap.OptionLocationPath, Value: []byte(strconv.Itoa(int(iid)))},
 		)
 	case len(rest) == 1 && req.Code == coap.CodeDELETE:
 		iid, err := strconv.Atoi(rest[0])
