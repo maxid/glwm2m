@@ -170,6 +170,11 @@ go run ./examples/observe-telemetry
 [`examples/README.md`](examples/README.zh-CN.md)；加 `-serve` 可以把任一示例变成一个外部
 LwM2M 客户端可以注册的服务端。
 
+## 性能
+
+一次注册与一次 observe 通知的实测数字（含机器、边界与复现命令）见
+[`docs/PERFORMANCE.zh-CN.md`](docs/PERFORMANCE.zh-CN.md)。它是回环基线，不是吞吐承诺。
+
 ## 版本管理
 
 见 [VERSIONING.md](VERSIONING.md)。

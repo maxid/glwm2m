@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+- `benchmark_test.go` 与 `docs/PERFORMANCE.md`（含中文版）：回环 UDP 上一次注册、一条
+  observe 通知的实测数字，附机器、边界与复现命令。基准不进 `go test ./...`、不进 CI，数字是
+  基线而非目标。
+- **修复：** `2.01 Created` 现在把注册 id 放在 `Location-Path` 里（LwM2M 1.0 的要求）；此前
+  用的是 `URI-Path`，会把位置存下来用于注销的客户端因此读错选项。Object 19 的创建辅助函数
+  对设备返回的两种选项都接受。
+
 - 超过一个 CoAP 块的下行请求体现在通过注册所在会话用 Block1 上传，真实客户端也会接受大
   写入；只有注册没有活会话时才使用拨号客户端。
 

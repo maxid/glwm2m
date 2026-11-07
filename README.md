@@ -148,6 +148,13 @@ plugin registry: `gplugin.NewRegistry(server)` from
 an observer and per-plugin start/stop; this package only defines what a plugin can plug
 into.
 
+## Performance
+
+Numbers for one registration and one observe notification — with the machine, the
+caveats and the reproduction command — are in
+[`docs/PERFORMANCE.md`](docs/PERFORMANCE.md). They are a loopback baseline, not a
+throughput promise.
+
 ## Configuration
 
 | Field | Default | Meaning |

@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+- `benchmark_test.go` and `docs/PERFORMANCE.md` (with its Chinese counterpart): one
+  registration and one observe notification over loopback UDP, with the machine, the
+  caveats and the reproduction command. Benchmarks stay out of `go test ./...` and
+  out of CI; the numbers are a baseline rather than a target.
+- **Fixed:** a `2.01 Created` now carries its registration id in `Location-Path`, as
+  LwM2M 1.0 requires; it used `URI-Path`, which a client that stores the location for
+  deregistration reads from the wrong option. The Object 19 create helper accepts
+  either option from a device.
+
 - A downlink body above one CoAP block is now uploaded with Block1 over the
   registration's session, so a real client accepts a large Write too; the dialed
   client is used only when the registration has no live session.
