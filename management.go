@@ -217,6 +217,12 @@ func (s *Server) do(ctx context.Context, reg Registration, req gcoap.ClientReque
 	if limit := s.cfg.DownlinkMaxRequestSize; limit > 0 && len(req.Payload) > limit {
 		return gcoap.ClientResponse{}, fmt.Errorf("%w: %d of %d bytes", gcoap.ErrRequestTooLarge, len(req.Payload), limit)
 	}
+	if addr := reg.Peer.Addr; addr != "" {
+		if err := s.quota.acquire(addr); err != nil {
+			return gcoap.ClientResponse{}, err
+		}
+		defer s.quota.release(addr)
+	}
 	if s.cfg.DownlinkDialer == nil && reg.Peer.Addr != "" {
 		resp, err := s.coap.DoTo(opCtx, reg.Peer.Addr, req)
 		switch {
@@ -409,6 +415,20 @@ func (s *Server) Observe(ctx context.Context, op Operation, handler func(Value))
 	if err != nil {
 		return nil, Value{}, err
 	}
+	// An observation holds one downlink slot for its whole life, so a peer cannot
+	// accumulate unbounded observations; the bound is per peer address and shared
+	// with the requests in flight.
+	addr := reg.Peer.Addr
+	if addr != "" {
+		if err := s.quota.acquire(addr); err != nil {
+			return nil, Value{}, err
+		}
+	}
+	releaseQuota := func() {
+		if addr != "" {
+			s.quota.release(addr)
+		}
+	}
 	// The observation outlives this call: it is detached from the caller's
 	// deadline, and the registration exchange gets its own timer below.
 	obsCtx, obsCancel := context.WithCancel(context.WithoutCancel(ctx))
@@ -431,18 +451,22 @@ func (s *Server) Observe(ctx context.Context, op Operation, handler func(Value))
 	case result = <-startedCh:
 	case <-time.After(timeout):
 		obsCancel()
+		releaseQuota()
 		return nil, Value{}, context.DeadlineExceeded
 	case <-ctx.Done():
 		obsCancel()
+		releaseQuota()
 		return nil, Value{}, ctx.Err()
 	}
 	if result.err != nil {
 		obsCancel()
+		releaseQuota()
 		return nil, Value{}, result.err
 	}
 	if result.initial.Code.Class() != 2 {
 		_ = result.obs.Cancel(context.Background())
 		obsCancel()
+		releaseQuota()
 		return nil, Value{}, &OperationError{RegistrationID: reg.ID, Code: result.initial.Code}
 	}
 	wrapped := &DownlinkObservation{srv: s, regID: reg.ID, obs: result.obs, cancel: obsCancel, done: make(chan struct{})}
@@ -450,6 +474,7 @@ func (s *Server) Observe(ctx context.Context, op Operation, handler func(Value))
 		<-result.obs.Done()
 		wrapped.finish()
 		s.removeObservation(wrapped)
+		releaseQuota()
 	}()
 	s.dl.mu.Lock()
 	s.dl.observations[reg.ID] = append(s.dl.observations[reg.ID], wrapped)

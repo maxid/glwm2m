@@ -30,6 +30,10 @@ const (
 	DefaultMaxRegistrations = 1024
 	// DefaultDownlinkTimeout bounds one server-initiated operation.
 	DefaultDownlinkTimeout = 10 * time.Second
+	// DefaultMaxDownlinksPerPeer bounds the downlinks in flight to one peer
+	// address. A LwM2M device answers one operation at a time in practice, and
+	// an unbounded server would pile requests onto a slow one.
+	DefaultMaxDownlinksPerPeer = 8
 )
 
 // Config configures the LwM2M server.
@@ -55,6 +59,11 @@ type Config struct {
 	// DownlinkTimeout bounds one server-initiated operation when the Operation
 	// carries no timeout. Zero keeps DefaultDownlinkTimeout.
 	DownlinkTimeout time.Duration
+	// MaxDownlinksPerPeer bounds the downlinks in flight to one peer address: a
+	// Read/Write/Execute running right now plus every observation registered on
+	// it. Zero keeps DefaultMaxDownlinksPerPeer; the peer's existing operations
+	// keep working when a new one is refused, and other peers are unaffected.
+	MaxDownlinksPerPeer int
 	// DownlinkMaxRequestSize bounds one downlink request body, including a
 	// Block1 binary-data upload. Zero keeps gcoap's default (1 MiB).
 	DownlinkMaxRequestSize int
@@ -92,6 +101,7 @@ type Server struct {
 	store    *objectStore
 	registry *ObjectRegistry
 	dl       *downlinkState
+	quota    *downlinkQuota
 }
 
 // New creates a server and registers the /rd and /objects endpoints.
@@ -110,6 +120,7 @@ func New(cfg Config) (*Server, error) {
 		store:      newObjectStore(),
 		registry:   cfg.Objects,
 		dl:         newDownlinkState(),
+		quota:      newDownlinkQuota(cfg.MaxDownlinksPerPeer),
 	}
 	cs, err := gcoap.New(gcoap.Config{Addr: cfg.Addr, Network: cfg.Network, TLS: cfg.TLS})
 	if err != nil {
@@ -141,6 +152,9 @@ func withConfigDefaults(cfg Config) Config {
 	if cfg.DownlinkTimeout == 0 {
 		cfg.DownlinkTimeout = DefaultDownlinkTimeout
 	}
+	if cfg.MaxDownlinksPerPeer == 0 {
+		cfg.MaxDownlinksPerPeer = DefaultMaxDownlinksPerPeer
+	}
 	return cfg
 }
 
@@ -153,6 +167,9 @@ func validateConfig(cfg Config) error {
 	}
 	if cfg.MaxRegistrations < 0 {
 		return errors.New("glwm2m: MaxRegistrations must not be negative")
+	}
+	if cfg.MaxDownlinksPerPeer < 0 {
+		return errors.New("glwm2m: MaxDownlinksPerPeer must not be negative")
 	}
 	return nil
 }
