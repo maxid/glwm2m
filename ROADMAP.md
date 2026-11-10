@@ -24,5 +24,7 @@
       proves it with Leshan)
 - [x] Block1 from the server side, for a downlink body above one block
 - [ ] Interop with real devices and vendor simulators, both directions
-- [ ] Pluggable registration storage and per-peer downlink quotas
+- [x] Per-peer downlink quota: requests in flight plus observations per peer address
+      (`Config.MaxDownlinksPerPeer`, `ErrTooManyDownlinks`)
+- [ ] Pluggable registration storage
 - [ ] v1.0 API stabilization

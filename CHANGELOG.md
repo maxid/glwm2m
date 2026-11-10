@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+- `Config.MaxDownlinksPerPeer` (8) bounds the downlinks one peer address may hold —
+  a Read/Write/Execute in flight plus every observation registered on it. A new
+  operation beyond the limit is refused with `ErrTooManyDownlinks`, the peer's
+  existing operations keep working and other peers are unaffected; a reconnect from
+  the same address stays inside the same budget.
+
 - `benchmark_test.go` and `docs/PERFORMANCE.md` (with its Chinese counterpart): one
   registration and one observe notification over loopback UDP, with the machine, the
   caveats and the reproduction command. Benchmarks stay out of `go test ./...` and

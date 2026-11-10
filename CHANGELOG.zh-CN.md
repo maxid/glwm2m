@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+- `Config.MaxDownlinksPerPeer`（8）限制单个对端地址能持有的下行 —— 在途的
+  Read/Write/Execute 加上它上面注册的每个观察。超过上限的新操作以 `ErrTooManyDownlinks`
+  拒绝，该对端已有的操作继续工作，其它对端不受影响；同一地址重连仍算同一份预算。
+
 - `benchmark_test.go` 与 `docs/PERFORMANCE.md`（含中文版）：回环 UDP 上一次注册、一条
   observe 通知的实测数字，附机器、边界与复现命令。基准不进 `go test ./...`、不进 CI，数字是
   基线而非目标。

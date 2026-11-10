@@ -165,6 +165,7 @@ throughput promise.
 | `MaxRegistrations` | 1024 | registry bound (5.03 beyond it) |
 | `RejectEndpointConflict` | false | reject a duplicate endpoint with 4.09 instead of replacing |
 | `DownlinkTimeout` | 10s | default per-operation timeout |
+| `MaxDownlinksPerPeer` | 8 | requests in flight plus observations per peer address; a new one beyond it is `ErrTooManyDownlinks` |
 | `DownlinkMaxRequestSize` | gcoap default (1 MiB) | bound on one downlink request body |
 | `DownlinkTLS` | — | DTLS client configuration for callbacks |
 | `DownlinkDialer` | — | custom downlink dialer |

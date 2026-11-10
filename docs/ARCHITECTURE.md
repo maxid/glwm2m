@@ -105,6 +105,12 @@ to the callback on the downlink client's receive goroutine — it must not block
 observation ends with `Cancel`, with `Client.Close`, or when the registration's
 cached client is closed by deregistration, expiry or `Server.Stop`.
 
+Every downlink takes one slot from the peer's budget `Config.MaxDownlinksPerPeer`
+(one address keeps its slots across a reconnect): a request holds it until it
+answers, an observation for its whole life. A peer at its limit gets
+`ErrTooManyDownlinks` for a new operation, its existing ones keep working, and other
+peers are unaffected.
+
 Downlinks use the path a LwM2M client serves: `/{oid}[/{iid}[/{rid}]]`. The
 library's own `/objects/...` endpoints are the server side only and never appear on
 the wire to a device.
@@ -129,6 +135,7 @@ the wire to a device.
 | `MaxRegistrations` | 1024 | live registrations; beyond it a registration is `5.03` |
 | `DownlinkTimeout` | 10s | bound of one server-initiated operation |
 | `DownlinkMaxRequestSize` | 1 MiB | one downlink body, Block1 included (gcoap's default) |
+| `MaxDownlinksPerPeer` | 8 | requests in flight plus observations per peer address |
 
 The CoAP-level limits — observers, block size, deduplication, exchange timings —
 come from gcoap's defaults; `glwm2m.Config` does not expose them today.

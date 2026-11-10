@@ -81,7 +81,10 @@ than gcoap's default observer budget has to wait for that to be plumbed through
 (or configure gcoap directly if it embeds the engine differently).
 
 `DownlinkTimeout` (10s) bounds one server-initiated operation; a slow device blocks
-the caller for at most that long.
+the caller for at most that long. `MaxDownlinksPerPeer` (8) bounds what one peer
+address can have in flight — a running request or a registered observation — so a
+device that stops answering cannot accumulate an unbounded pile of downlinks; the
+refusal is `ErrTooManyDownlinks` and the peer's existing operations keep working.
 
 ## Observability
 

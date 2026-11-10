@@ -89,6 +89,10 @@ socket 描述不了的传输或地址。每个注册缓存一个客户端并带 
 不能阻塞。观察随 `Cancel`、`Client.Close`，或注册缓存客户端被注销/过期/`Server.Stop` 关闭而
 结束。
 
+每个下行都从对端预算 `Config.MaxDownlinksPerPeer` 里取一个槽位（同一个地址在重连后仍沿用
+这份预算）：请求持有到拿到答复，观察持有整个生命周期。对端到达上限后新的操作得到
+`ErrTooManyDownlinks`，它已有的操作继续工作，其它对端不受影响。
+
 下行使用 LwM2M 客户端服务的路径：`/{oid}[/{iid}[/{rid}]]`。库自己的 `/objects/...` 端点只
 是服务端一侧的接口，不会出现在发给设备的线路上。
 
@@ -110,6 +114,7 @@ socket 描述不了的传输或地址。每个注册缓存一个客户端并带 
 | `MaxRegistrations` | 1024 | 活跃注册上限，超出注册回 `5.03` |
 | `DownlinkTimeout` | 10s | 单次服务端发起操作的时限 |
 | `DownlinkMaxRequestSize` | 1 MiB | 单次下行体的上限（含 Block1），取 gcoap 默认 |
+| `MaxDownlinksPerPeer` | 8 | 单个对端地址的在途请求 + 观察数 |
 
 CoAP 层的限额 —— 观察者、块大小、去重、交换时序 —— 都来自 gcoap 的默认值；
 `glwm2m.Config` 目前没有暴露它们。

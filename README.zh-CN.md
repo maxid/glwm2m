@@ -170,6 +170,14 @@ go run ./examples/observe-telemetry
 [`examples/README.md`](examples/README.zh-CN.md)；加 `-serve` 可以把任一示例变成一个外部
 LwM2M 客户端可以注册的服务端。
 
+## 限额
+
+| 配置项 | 默认 | 含义 |
+| --- | --- | --- |
+| `MaxRegistrations` | 1024 | 注册表上限（超出回 5.03） |
+| `ExpiryInterval` | 1s | 过期扫描间隔；为负则关闭 |
+| `MaxDownlinksPerPeer` | 8 | 单个对端地址的在途请求 + 观察数；超出回 `ErrTooManyDownlinks` |
+
 ## 性能
 
 一次注册与一次 observe 通知的实测数字（含机器、边界与复现命令）见
