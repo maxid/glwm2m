@@ -255,6 +255,10 @@ func (s *Server) handleRegister(_ context.Context, req gcoap.Request) gcoap.Resp
 	}
 	s.emitAll(events)
 	s.emit(RegistrationEvent{Type: EventRegistered, Registration: reg.snapshot()})
+	if replace != "" {
+		s.storeDelete(replace)
+	}
+	s.storeSave(reg.snapshot())
 	return gcoap.Response{
 		Code: coap.CodeCreated,
 		Options: []coap.Option{
@@ -317,6 +321,7 @@ func (s *Server) handleUpdate(_ context.Context, req gcoap.Request) gcoap.Respon
 		s.closeDownlink(id)
 	}
 	s.emit(event)
+	s.storeSave(updated)
 	return gcoap.Response{Code: coap.CodeChanged}
 }
 
@@ -342,6 +347,7 @@ func (s *Server) handleDelete(_ context.Context, req gcoap.Request) gcoap.Respon
 
 	s.closeDownlink(id)
 	s.emit(RegistrationEvent{Type: EventDeregistered, Registration: snapshot, Reason: "client"})
+	s.storeDelete(id)
 	return gcoap.Response{Code: coap.CodeDeleted}
 }
 
@@ -364,6 +370,7 @@ func (s *Server) expire(now time.Time) {
 	for _, reg := range expired {
 		s.closeDownlink(reg.ID)
 		s.emit(RegistrationEvent{Type: EventExpired, Registration: reg, Reason: "lifetime"})
+		s.storeDelete(reg.ID)
 	}
 }
 

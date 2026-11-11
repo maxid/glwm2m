@@ -75,6 +75,15 @@ type Config struct {
 	// registration and must return a connected CoAP client.
 	DownlinkDialer func(ctx context.Context, reg Registration) (*gcoap.Client, error)
 
+	// Store persists registrations across a restart. Nil keeps them in memory
+	// only, which is the default: a restarted server waits for devices to
+	// re-register. When set, Start loads the live records and every registration
+	// change is written through it.
+	Store RegistrationStore
+	// StoreError receives a persistence failure. Nil discards it; a failing store
+	// never fails the protocol request itself.
+	StoreError func(error)
+
 	// Events receives registration lifecycle events. Nil discards them.
 	Events EventSink
 	// Objects, when set, validates local object reads and writes and enforces
@@ -183,6 +192,9 @@ func networkOf(network string) string {
 
 // Start starts the CoAP listener and the registration expiry scan.
 func (s *Server) Start(ctx context.Context) error {
+	if err := s.restore(ctx); err != nil {
+		return err
+	}
 	if err := s.coap.Start(ctx); err != nil {
 		return err
 	}
