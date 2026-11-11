@@ -177,6 +177,8 @@ LwM2M 客户端可以注册的服务端。
 | `MaxRegistrations` | 1024 | 注册表上限（超出回 5.03） |
 | `ExpiryInterval` | 1s | 过期扫描间隔；为负则关闭 |
 | `MaxDownlinksPerPeer` | 8 | 单个对端地址的在途请求 + 观察数；超出回 `ErrTooManyDownlinks` |
+| `Store` | nil | `RegistrationStore`，跨重启保留注册；nil 时只在内存 |
+| `StoreError` | nil | 接收持久化失败（存储故障不会让注册失败） |
 
 ## 性能
 

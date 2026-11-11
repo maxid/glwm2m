@@ -23,5 +23,5 @@
 - [ ] 与真机/厂商模拟器的互操作测试（双向）
 - [x] per-peer 下行配额：单个对端地址的在途请求 + 观察
       （`Config.MaxDownlinksPerPeer`、`ErrTooManyDownlinks`）
-- [ ] 可插拔注册存储
+- [x] 可插拔注册存储（`Config.Store` + `FileStore`）
 - [ ] v1.0 API 稳定化

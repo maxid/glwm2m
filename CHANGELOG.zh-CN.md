@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 
+- `Config.Store`：`RegistrationStore` 这道缝让注册跨重启保留。`Start` 加载未过期记录（过期、
+  endpoint 不可用、endpoint 重复的记录会被丢弃并从存储中删除），每个生命周期变化都写穿；写失败
+  通过 `Config.StoreError` 上报、不让设备请求失败，而存储读不出来时 `Start` 直接失败。
+  `FileStore` 是随库提供的实现：一个 JSON 文件，互斥锁下原子替换。
+
 - `Config.MaxDownlinksPerPeer`（8）限制单个对端地址能持有的下行 —— 在途的
   Read/Write/Execute 加上它上面注册的每个观察。超过上限的新操作以 `ErrTooManyDownlinks`
   拒绝，该对端已有的操作继续工作，其它对端不受影响；同一地址重连仍算同一份预算。

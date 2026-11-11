@@ -169,13 +169,14 @@ throughput promise.
 | `DownlinkMaxRequestSize` | gcoap default (1 MiB) | bound on one downlink request body |
 | `DownlinkTLS` | — | DTLS client configuration for callbacks |
 | `DownlinkDialer` | — | custom downlink dialer |
+| `Store` | nil | `RegistrationStore` for cross-restart persistence; nil keeps registrations in memory |
+| `StoreError` | nil | receives a persistence failure (a store outage never fails a registration) |
 | `Events` | nil | registration lifecycle sink |
 | `Objects` | nil | object registry; nil keeps the permissive local tree |
 
 ## Planned
 
 - Bootstrap / Queue Mode / OSCORE
-- Pluggable registration storage and per-peer downlink quotas
 - A real-device/simulator interoperability matrix
 
 ## Example

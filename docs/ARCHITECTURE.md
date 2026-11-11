@@ -115,6 +115,25 @@ Downlinks use the path a LwM2M client serves: `/{oid}[/{iid}[/{rid}]]`. The
 library's own `/objects/...` endpoints are the server side only and never appear on
 the wire to a device.
 
+## Persistence
+
+`Config.Store` is the seam: nil keeps registrations in memory (the default), and a
+`RegistrationStore` persists them across a restart. The store is deliberately dull —
+`Save` an upsert by id, `Delete` by id, `List` everything — because the semantics
+stay in the server: expiry, the endpoint-conflict policy and the epoch.
+
+- `Start` loads the store before the listener accepts anything. An expired record,
+  one with an unusable endpoint, and one whose endpoint another record already claims
+  are dropped (and deleted from the store); a store that cannot be read fails
+  `Start`, so a broken disk is visible instead of silently losing the registry.
+- Every lifecycle change writes through: register (and the replaced record is
+  deleted), update, deregistration and expiry.
+- A write failure is reported through `Config.StoreError` and never fails the
+  protocol request: a device's registration must not depend on a disk.
+- `FileStore` is the shipped implementation: one JSON file, rewritten atomically
+  (temporary file renamed over it) under a mutex. It is sized for the registrations a
+  single server holds, not for a shared cluster.
+
 ## Concurrency
 
 - The registration table is guarded by `Server.mu`; the object store has its own
@@ -157,8 +176,9 @@ come from gcoap's defaults; `glwm2m.Config` does not expose them today.
 - **No bootstrap interface.** A device must be provisioned with the server URI.
 - **Certificate-only DTLS.** gnety's transport has no pre-shared-key mode; see
   `DEPLOYMENT.md`.
-- **In-memory registrations.** A restart drops them; there is no pluggable store
-  yet (ROADMAP).
+- **Restored registrations carry the address they last registered from.** After a
+  restart that address may be stale; the first update rebinds it and downlinks to the
+  old one time out.
 - **No per-peer downlink quota**, and no metrics hooks of its own: the registration
   events are the observable surface, and gcoap's `Metrics` is not exposed through
   `glwm2m.Config`.

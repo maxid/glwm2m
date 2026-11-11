@@ -26,5 +26,5 @@
 - [ ] Interop with real devices and vendor simulators, both directions
 - [x] Per-peer downlink quota: requests in flight plus observations per peer address
       (`Config.MaxDownlinksPerPeer`, `ErrTooManyDownlinks`)
-- [ ] Pluggable registration storage
+- [x] Pluggable registration storage (`Config.Store` + `FileStore`)
 - [ ] v1.0 API stabilization

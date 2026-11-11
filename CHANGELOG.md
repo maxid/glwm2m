@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+- `Config.Store`: a `RegistrationStore` seam that keeps registrations across a
+  restart. `Start` loads the live records (expired, unusable and duplicate-endpoint
+  ones are dropped and removed from the store) and every lifecycle change is written
+  through; a failed write is reported through `Config.StoreError` and never fails the
+  device's request, while an unreadable store fails `Start`. `FileStore` is the
+  shipped implementation: one JSON file, atomically replaced under a mutex.
+
 - `Config.MaxDownlinksPerPeer` (8) bounds the downlinks one peer address may hold —
   a Read/Write/Execute in flight plus every observation registered on it. A new
   operation beyond the limit is refused with `ErrTooManyDownlinks`, the peer's

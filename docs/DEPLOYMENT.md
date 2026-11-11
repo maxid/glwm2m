@@ -11,11 +11,18 @@ One `glwm2m.Server` owns one CoAP listener (UDP or DTLS). Devices register over
 it, and server-initiated Read/Write/Execute/Observe are sent back to the address
 the registration arrived from, unless `Config.DownlinkDialer` says otherwise.
 
-Registrations live **in this process's memory**. There is no shared store and no
-clustering: run one server per set of devices, and expect that a restart loses
-every registration (each device re-registers on its own schedule). If that is not
-acceptable for a deployment, registrations have to be terminated in front of this
-engine or persisted by an implementation of the pending pluggable-store item.
+Registrations live in this process; `Config.Store` decides whether a restart keeps
+them. With no store (the default) a restart loses every registration and each device
+re-registers on its own schedule. With a `RegistrationStore` — `glwm2m.NewFileStore` is the
+shipped one — `Start` loads the live records and every change
+is written through, so a restart keeps the registry.
+
+There is no shared store and no clustering either way: run one server per set of
+devices. A restored registration keeps the address it last registered from, which a
+NAT rebind or a new lease invalidates — the device's next update rebinds it and
+downlinks to the old address time out. A store that cannot be read fails `Start`
+(visible, not silent); a failed write is reported through `Config.StoreError` and
+does not fail the device's request.
 
 ## Ports and transport
 
